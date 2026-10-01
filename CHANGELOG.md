@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.24.1
+- The docks in the harbour panorama have a real person on the pier: whoever is waiting to talk (Hock, or the port's visitor) stands behind a fish crate with a "!" over them, and when nobody is waiting the dock's fishmonger minds the crate instead. They replace the simple stick figure.
+
 ## 0.24.0
 - Sailing into a new sea plays like a film. Black letterbox bars close in, your ship drives across the screen through rolling swell and slanting rain, pitching and climbing every wave. Into the Fog Sea, banks of fog roll across it; into the Deep, the waves tower, the ship heaves harder and lightning splits the sky twice with the whole screen flashing. "Sea 2 of 3" and the sea's name slam onto the screen, then the bars close to black and you make port. Tap to skip; reduced motion shows just the title.
 

@@ -120,6 +120,7 @@ Every item is one `I(key, name, size, cooldown, tags, ship, glyph|crewLook, fiel
 
 ## The harbour
 - A port opens on the harbour scene in harbour.js: one wide ink panorama (`harbourWorld()`, `HW`×`HH` units) you scroll along, with places at `HSTOPS` positions and arrows that walk between them (`bindHarbour()`, which remembers the spot in `PV.hx`). Each place shows its state in the drawing (goods, faces at windows, chalk notices, a figure on the pier), not with badges. `port(id,view)` draws the harbour or one building; `PV` remembers the view while you stay, and `chart()` resets it. Re-renders inside a port must call `port(id,view)` so you stay put.
+- The pier figure is `hFigure(x,y,look,waiting)`: a peep behind a fish crate, using `harbourInfo().docks.look` (whoever is waiting, else the dock's fishmonger).
 - Badges come from `harbourInfo()`. The tutorial opens on the market so its steps still find `.offers`.
 
 ## Chart water

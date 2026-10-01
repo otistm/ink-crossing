@@ -257,7 +257,9 @@ function harbourInfo(S,vis){const n=S.offers.filter(Boolean).length,h=(S.tavern|
   who=(vis&&!S.talked)||G.hock==='active';
   return{market:{badge:n||'',say:`${n} for sale`,n},tavern:{badge:G.tut?'':h||'',say:G.tut?'closed':`${h} for hire`,h:G.tut?0:h},
     wright:{badge:G.tut?'':hurt?'!':f||'',say:G.tut?'closed':`${f} fittings${hurt?', hull needs repair':''}`,f:G.tut?0:f},
-    docks:{badge:who?'!':G.creel.length||'',say:`${who?'someone is waiting':'nobody waiting'}${G.creel.length?`, ${G.creel.length} fish to sell`:''}`,who,fish:G.creel.length}}}
+    docks:{badge:who?'!':G.creel.length||'',say:`${who?'someone is waiting':'nobody waiting'}${G.creel.length?`, ${G.creel.length} fish to sell`:''}`,who,fish:G.creel.length,
+      // who stands on the pier: whoever is waiting to talk, or else the dock's fishmonger
+      look:vis&&!S.talked?NPCS[vis].look:G.hock==='active'?NPCS.hock.look:MONGERS[mongerOf(PV.id!=null?PV.id:G.at)].look}}}
 /* how much hull you can afford to repair, up to the most the shipwright will fix */
 const repairable=()=>Math.max(0,Math.min(HULL_MAX-G.hull,Math.floor(G.gold/repairCost())));
 /* the shipwright: a yard laid out like the market stall. The wright stands at their workbench with a speech bubble beside them;
