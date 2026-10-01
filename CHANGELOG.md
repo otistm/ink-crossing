@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.23.0
+- The tavern matches the market, yard and docks. Whoever you're talking to stands at the bar in front of the bottle shelves with their speech bubble beside them (their pitch, crafts, wage and Hire), and everyone looking for work sits along the bar below as a round face with their fee. Tap one and they step up.
+
 ## 0.22.0
 - The docks get the market's layout. A fishmonger stands on the pier in front of the sea with a speech bubble beside them, and your catch is laid out on their crates. Tap a fish to hear what they'll pay, then Sell, or sell the whole creel at once. The fish they want today wears a 2× mark.
 - Anyone else on the dock (a visitor, or Hock with his quest) waits as a face in the corner. Tap them and they step up to say their piece, with a Talk button.

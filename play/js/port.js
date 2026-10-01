@@ -3,7 +3,7 @@
 /* ---------- port ---------- */
 /* which part of the port you're looking at: the drawn harbour, or one of its buildings. Kept while you stay in the same port. */
 let PV={id:null,view:'harbour'};
-addEventListener('resize',()=>{if(document.getElementById('barroom'))layBar();if(document.getElementById('stall'))layStall()});
+addEventListener('resize',()=>{if(document.getElementById('stall'))layStall()});
 const BLD={market:'Market',tavern:'Tavern',wright:'Shipwright',docks:'Docks'};
 function port(id,view){
   cancelAnimationFrame(raf);B=null;G.inPort=true;
@@ -81,8 +81,7 @@ function port(id,view){
     if(G.gold<feeOf(k))return toast(`Need ${feeOf(k)-G.gold} more gold`);
     G.gold-=feeOf(k);hire(k);S.tavern[i]=null;bump='gold';save();toast(`${C.n} joins the crew`);port(id,view)});
   if(view==='harbour')bindHarbour();
-  if(view==='tavern'){layBar();requestAnimationFrame(layBar)}
-  if(view==='market'||view==='wright'||view==='docks'){layStall();requestAnimationFrame(layStall)}
+  if(view!=='harbour'){layStall();requestAnimationFrame(layStall)}
   app.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{PV.dsel=b.dataset.ds;port(id,view)});
   app.querySelectorAll('[data-df]').forEach(b=>b.onclick=()=>{PV.dsel=+b.dataset.df;port(id,view)});
   app.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const v=b.dataset.w;PV.wsel=v==='r'?'r':+v;port(id,view)});
@@ -163,54 +162,34 @@ function docksHTML(S,id,vis,anim){const mk=mongerOf(id),M=MONGERS[mk],pay=f=>fis
       <div class="table crates"><div class="goods" id="goods">${goods}</div></div>
     </div>
   </section>`}
-/* the tavern: everyone looking for work sits at the bar. Tap one to have a word; they make their pitch below. */
-/* the tavern: the bar scene fills the room. Everyone looking for work sits at the counter; tap one and a speech bubble
-   floats over the scene just under them, pointing up, with their pitch and a Hire button. layBar() fits it all to the space. */
-function tavernHTML(S){const full=(G.crew||[]).length>=berths(),n=S.tavern.length;
+/* the tavern: laid out like the market. Whoever you're talking to stands at the bar with their speech bubble beside them (their
+   pitch, crafts, wage and the Hire button); everyone looking for work sits along the bar below. Tap one and they step up. */
+function tavernHTML(S){const full=(G.crew||[]).length>=berths();
   let sel=PV.tsel;if(sel==null||!S.tavern[sel])sel=S.tavern.findIndex(Boolean);
-  // the hands sit in 0..PW; the room runs on far past them on every side, so the scene can fill any shape
-  const PW=n*240+40,L=-1600,R=PW+1600,B=1600;
-  let wall='';for(let x=L+6;x<R-20;x+=34){const a=Math.abs(x),h=18+(a*7)%16,w=9+(a*3)%6;wall+=`<path class="w" d="M${x} 92v-${h-6}q0-6 ${w/2}-6t${w/2} 6v${h-6}z" stroke-width="1.6"/><path d="M${x+w/2} ${92-h-4}v-6" stroke-width="2"/>`}
-  for(let x=L+20;x<R-20;x+=46){const a=Math.abs(x);wall+=`<path class="w" d="M${x} 164v-24h${10+(a*5)%8}v24z" stroke-width="1.6"/><path class="w" d="M${x+20} 164v-14q0-6 8-6t8 6v14z" stroke-width="1.6"/>`}
-  for(let x=L+120;x<R;x+=240)wall+=`<g class="hlamp" transform="translate(${x} 0)"><path d="M0 0v20" stroke-width="1.6"/><path class="w" d="M-8 20h16l-3 16h-10z" stroke-width="1.8"/></g>`;
-  let floor='';for(let y=400;y<B;y+=26)floor+=`<path d="M${L} ${y}H${R}" stroke-width="1" opacity="${Math.max(.15,.5-(y-400)/1400)}"/>`;
-  for(let x=L+60;x<R;x+=150)floor+=`<path d="M${x} 400v${B}" stroke-width="1" opacity=".18"/>`;
-  const seats=S.tavern.map((k,i)=>{const x=20+i*240;
-    if(!k)return`<g transform="translate(${x} 0)"><text class="hchalk" x="120" y="228" text-anchor="middle">hired</text><g transform="translate(150 262) rotate(-80)"><rect class="w" x="-12" y="-26" width="24" height="26" rx="3"/><path d="M12 -20c8 0 8 12 0 12" stroke-width="2"/></g></g>`;
-    return`<g class="patron${i===sel?' sel':''}" data-sel="${i}" role="button" tabindex="0" aria-label="Talk to the ${CREW[k].n}${i===sel?', talking':''}"><rect class="hit" x="${x}" y="0" width="240" height="290"/>
-      <g transform="translate(${x} ${i===sel?14:28})"><g class="bust">${peepLayers(CREW[k].look)}</g></g>
-      <g transform="translate(${x+168} 262)"><rect class="w" x="-12" y="-28" width="24" height="28" rx="3"/><path d="M12 -22c9 0 9 14 0 14M-12 -20h24" stroke-width="2"/></g></g>`}).join('');
   const k=sel>=0?S.tavern[sel]:null,C=k&&CREW[k];
-  return`<section class="tavern"><div class="m-head"><h2 style="font-size:20px">Tavern <span class="soft">deck ${(G.crew||[]).length}/${berths()}</span></h2><button class="ghost" id="yourcrew">Your crew</button></div>
-    <div class="barroom" id="barroom" data-pw="${PW}" data-sx="${sel>=0?20+sel*240+120:-1}">
-    <svg class="barscene" aria-label="The bar" preserveAspectRatio="xMidYMin slice" viewBox="0 0 ${PW} 330">
-      <path d="M${L} 92H${R}M${L} 164H${R}" stroke-width="3"/>${wall}
-      ${seats}
-      <rect class="w" x="${L}" y="262" width="${R-L}" height="16" stroke-width="3"/>
-      <path class="w" d="M${L} 278H${R}V400H${L}z" stroke-width="2.4"/>${Array.from({length:Math.floor((R-L)/40)},(_,i)=>`<path d="M${L+20+i*40} 284v104" stroke-width="1" opacity=".5"/>`).join('')}<path d="M${L} 314H${R}M${L} 388H${R}" stroke-width="2.4"/>
-      ${floor}
-    </svg>
-    ${C?`<div class="talk" id="talk"><p class="say">“${C.say||'Looking for a berth, captain.'}”</p>
+  const hands=S.tavern.map((h,i)=>{if(!h)return`<span class="good handgood gone" aria-label="Hired"><span class="o-icon"></span><span class="ptag">hired</span></span>`;
+    return`<button class="good handgood${i===sel?' sel':''}" data-sel="${i}" aria-label="${CREW[h].n}, ${feeOf(h)} gold${i===sel?', talking':''}"><span class="o-icon plain">${crewFace(h)}</span><span class="ptag">${sicon('gold')}${feeOf(h)}</span></button>`}).join('');
+  const talk=C?`<div class="talk" id="talk"><p class="say">“${C.say||'Looking for a berth, captain.'}”</p>
       <p class="who"><b>${C.n}</b> ${crewCrafts1(k)}</p>
       <p class="terms">Lets your cargo use ${C.crafts.map(c=>`<b>${CRAFTS[c]}</b>`).join(' and ')}. Wage ${wageOf(k)} gold a port.</p>
       <button class="buy" data-hire="${sel}" ${full||G.gold<feeOf(k)?'aria-disabled="true"':''}>${full?'Your deck is full':`Hire for ${feeOf(k)} gold`}</button></div>`
-      :'<p class="talk quiet">Everyone here has signed on. The bar is quiet.</p>'}
+    :'<div class="talk" id="talk"><p class="say">“Everyone here has signed on. The bar is quiet.”</p></div>';
+  // the back wall: shelves of bottles and mugs, tiled so it fills any width
+  const bottles=`<pattern id="bottles" width="102" height="64" patternUnits="userSpaceOnUse"><g fill="#fff" stroke="#000" stroke-width="2" stroke-linejoin="round">
+      <path d="M8 62V40q0-6 5-8V20h6v12q5 2 5 8v22z"/><path d="M32 62V30q0-5 4-6v-8h5v8q4 1 4 6v32z"/>
+      <path d="M54 62V46h16v16z"/><path d="M70 50c7 0 7 9 0 9" fill="none"/><path d="M80 62V36q0-6 6-8V18h4v10q6 2 6 8v26z"/></g></pattern>`;
+  return`<section class="stallsec tavern">
+    <div class="stall inn" id="stall">
+      <svg class="stallwall" aria-hidden="true"><defs>${bottles}</defs>
+        <rect x="0" y="0" width="100%" height="30" fill="#000"/><path d="M0 9H4000M0 20H4000" stroke="#fff" stroke-width="1.4" stroke-dasharray="40 14"/>
+        <rect x="0" y="58" width="100%" height="64" fill="url(#bottles)"/><path d="M0 122.5H4000" stroke="#000" stroke-width="3"/>
+        <rect x="0" y="138" width="100%" height="64" fill="url(#bottles)" transform="translate(-50 0)"/><path d="M0 202.5H4000" stroke="#000" stroke-width="3"/></svg>
+      <h2 class="stallsign">Tavern <span class="soft">${(G.crew||[]).length}/${berths()}</span></h2>
+      <button class="ghost more" id="yourcrew">Your crew</button>
+      <div class="stalltop">${C?`<div class="seller" aria-label="${C.n}">${peep(C.look,'40 22 172 150')}</div>`:''}${talk}</div>
+      <div class="table bench bartop"><div class="goods" id="goods">${hands}</div></div>
     </div>
   </section>`}
-/* fit the bar to the room: fill the space down to the hold, keep every seat in view, and float the bubble under whoever's talking */
-function layBar(){const room=document.getElementById('barroom');if(!room)return;
-  const svg=room.querySelector('svg'),talk=document.getElementById('talk'),dock=app.querySelector('.dock');
-  const top=room.getBoundingClientRect().top,dh=dock?dock.offsetHeight:0,cw=room.clientWidth;
-  const ch=Math.max(260,Math.round(innerHeight-top-dh-14));room.style.height=ch+'px';
-  const PW=+room.dataset.pw,s=Math.min(cw/(PW+16),ch/330),vw=cw/s,vh=ch/s,x0=PW/2-vw/2;
-  const th=talk&&!talk.classList.contains('quiet')?talk.offsetHeight:0;
-  // spare height goes above the shelves, so the hands and the bubble under them sit together in the middle
-  const free=Math.max(0,ch-(250*s+th+18)),y0=-Math.min(free/2,60*s)/s;
-  svg.setAttribute('viewBox',`${x0} ${y0} ${vw} ${vh}`);
-  if(!th)return;
-  const sx=+room.dataset.sx,px=(sx-x0)*s,tw=talk.offsetWidth;
-  const left=Math.max(8,Math.min(cw-tw-8,px-tw/2)),topY=Math.min(ch-th-10,(250-y0)*s);
-  talk.style.left=left+'px';talk.style.top=topY+'px';talk.style.setProperty('--ax',(px-left)+'px')}
 const buyP=o=>Math.max(1,price(o.k,o.t)-(hasP('haggler')?1:0));
 /* what each building has for you right now: a badge and a few words for screen readers */
 function harbourInfo(S,vis){const n=S.offers.filter(Boolean).length,h=(S.tavern||[]).filter(Boolean).length,f=(S.fits||[]).filter(Boolean).length,hurt=G.hull<HULL_MAX,

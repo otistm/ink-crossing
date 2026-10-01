@@ -825,14 +825,6 @@ details.crafts summary{font-weight:800;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.hcloud,.hgull,.hglide,.hrays,.hsun-rays{animation:none!important}}
 
 /* the tavern bar: the scene fills the room, and the one you're talking to speaks in a bubble floating just under them */
-.barroom{position:relative;border:2.5px solid var(--ink);border-radius:18px;background:var(--paper);overflow:hidden;min-height:260px}
-.barscene{position:absolute;inset:0;width:100%;height:100%;display:block;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.barscene .w{fill:var(--paper)}.barscene .hit{fill:transparent;stroke:none}
-.barscene text{stroke:none}
-.patron{cursor:pointer;outline:none}
-.patron .bust{transition:transform .35s var(--spring)}
-.patron:focus-visible .hit{stroke:var(--ink);stroke-width:3;stroke-dasharray:8 8}
-@media (hover:hover) and (pointer:fine){.patron:not(.sel):hover .bust{transform:translateY(-6px)}}
 .talk{position:absolute;left:8px;top:150px;width:max-content;min-width:min(300px,calc(100% - 16px));max-width:calc(100% - 16px);border:2.5px solid var(--ink);border-radius:20px;box-shadow:5px 6px 0 var(--ink);background:var(--paper);padding:14px 16px;display:grid;gap:8px;justify-items:start;z-index:2;animation:pop-in .4s var(--spring) both;transform-origin:var(--ax,50%) 0}
 .talk::before{content:"";position:absolute;top:-12px;left:calc(var(--ax,50%) - 10px);width:18px;height:18px;background:var(--paper);border-left:2.5px solid var(--ink);border-top:2.5px solid var(--ink);transform:rotate(45deg)}
 .talk .say{font:italic 400 16px/1.35 var(--display)}
@@ -941,3 +933,8 @@ button.stat:active{transform:scale(1.06,.9)}
 .crates .goods::-webkit-scrollbar{display:none}
 .crates .good{flex:0 0 calc((100% - 30px) / 4)}
 @media (min-width:900px) and (min-height:560px){.crates .goods{gap:28px;max-width:600px}.crates .good{flex-basis:calc((100% - 84px) / 4)}}
+/* the tavern's bar: the hands looking for work sit along it as faces with their fee */
+.handgood .o-icon,body.desk .good.handgood .o-icon,.good.handgood .o-icon{padding:4%;border-radius:50%}
+.handgood .o-icon svg{display:block;width:100%;height:100%;border-radius:50%}
+.bartop{background:var(--paper) repeating-linear-gradient(180deg,transparent 0 13px,rgba(0,0,0,.14) 13px 14px)}
+.stallsign .soft{font:600 13px var(--ui);font-style:normal}
