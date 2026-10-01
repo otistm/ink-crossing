@@ -12,5 +12,11 @@ function peepLayers(look){const L=Object.assign({},PEEP_BASE,look||{});
   return`<g transform="scale(${PEEP_SCALE.toFixed(5)})" fill="none" stroke="none" fill-rule="evenodd">${PEEP_ORDER.map(s=>{const p=L[s]&&PEEP_PARTS[s][L[s]];
     return p?`<g transform="translate(${PEEP_AT[s][0]} ${PEEP_AT[s][1]})">${p}</g>`:''}).join('')}</g>`}
 function peep(look,view,cls){return`<svg class="${cls||'peep'}" viewBox="${view||PEEP_BUST}" aria-hidden="true">${peepLayers(look)}</svg>`}
+/* standing, head to toe: a pose from the set (look.pose, else PEEP_POSE) with the look's head, face, beard and accessory,
+   placed as in Open Peeps' standing figure (1179 by 3291, feet at the bottom). Used on the pier in the harbour. */
+const PEEP_STAND_AT={pose:[-121,634],head:[404,180],face:[563,366],beard:[527,518],acc:[451,421]},PEEP_POSE='resting-1',PEEP_FEET=3134;
+function peepStanding(look){const L=Object.assign({},PEEP_BASE,{pose:PEEP_POSE},look||{});
+  return`<g fill="none" stroke="none" fill-rule="evenodd">${['pose','head','face','beard','acc'].map(s=>{const p=L[s]&&PEEP_PARTS[s]&&PEEP_PARTS[s][L[s]];
+    return p?`<g transform="translate(${PEEP_STAND_AT[s][0]} ${PEEP_STAND_AT[s][1]})">${p}</g>`:''}).join('')}</g>`}
 /* a crew member's face for the round portraits in the tavern, the crew strip, the ship card and the desk */
 const crewFace=k=>peep(CREW[k]&&CREW[k].look,PEEP_HEAD);

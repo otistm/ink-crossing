@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.24.2
+- The person on the pier is drawn head to toe: a full standing figure from the Open Peeps set (arms crossed, hands in pockets, leaning) with their own head and face, standing on the deck beside a fish crate. Everyone who can appear there (Hock, the people you meet and the fishmongers) has their own pose.
+
 ## 0.24.1
 - The docks in the harbour panorama have a real person on the pier: whoever is waiting to talk (Hock, or the port's visitor) stands behind a fish crate with a "!" over them, and when nobody is waiting the dock's fishmonger minds the crate instead. They replace the simple stick figure.
 
