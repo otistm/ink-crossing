@@ -2,10 +2,10 @@
 "use strict";
 /* ---------- ships ---------- */
 const SHIPS={
-  sloop:{n:'The Wren',type:'Sloop',theme:'Speed, haste and crits.',hp:110,trait:'swift',start:[{k:'jib',t:0},{k:'rapier',t:0},{k:'swordcane',t:0}],crew:['fencer','bosun'],berths:3},
-  galleon:{n:'The Bulwark',type:'Galleon',theme:'Shields, health and heavy hits.',hp:110,trait:'bulwark',start:[{k:'shieldbash',t:0},{k:'bulkhead',t:0}],crew:['marines','quartermaster'],berths:4,lock:'Beat a sea boss to unlock.',ok:a=>a.bosses>0},
-  privateer:{n:'The Ember',type:'Privateer',theme:'Cannons, powder and burn.',hp:100,trait:'kindle',start:[{k:'swivel',t:0},{k:'flare',t:0}],crew:['guncrew','monkey'],berths:3,lock:'Beat 3 elites to unlock.',ok:a=>a.elites>=3},
-  junk:{n:'The Lotus',type:'Junk',theme:'Healing, poison and calm.',hp:105,trait:'lotus',start:[{k:'fugu',t:0},{k:'teapot',t:0}],crew:['apothecary','cormorant'],berths:3,lock:'Finish a voyage to unlock.',ok:a=>a.wins>0}
+  sloop:{n:'The Wren',type:'Sloop',theme:'Speed, haste and crits.',hp:110,trait:'swift',start:[{k:'jib',t:0},{k:'rapier',t:0},{k:'swordcane',t:0}],crew:['atarms','bosun'],berths:3},
+  galleon:{n:'The Bulwark',type:'Galleon',theme:'Shields, health and heavy hits.',hp:110,trait:'bulwark',start:[{k:'shieldbash',t:0},{k:'bulkhead',t:0}],crew:['atarms','quartermaster'],berths:4,lock:'Beat a sea boss to unlock.',ok:a=>a.bosses>0},
+  privateer:{n:'The Ember',type:'Privateer',theme:'Cannons, powder and burn.',hp:100,trait:'kindle',start:[{k:'swivel',t:0},{k:'flare',t:0}],crew:['gunner','atarms'],berths:3,lock:'Beat 3 elites to unlock.',ok:a=>a.elites>=3},
+  junk:{n:'The Lotus',type:'Junk',theme:'Healing, poison and calm.',hp:105,trait:'lotus',start:[{k:'fugu',t:0},{k:'teapot',t:0}],crew:['surgeon','atarms'],berths:3,lock:'Finish a voyage to unlock.',ok:a=>a.wins>0}
 };
 
 /* ---------- traits: enemy abilities and ship abilities ---------- */
@@ -100,42 +100,36 @@ const FITTINGS={
   kraken:{n:'Kraken',spot:'head',p:12,craft:'alch',up:'Enemy cargo starts every fight slowed for 3s.',dn:'Enemies have 10% more health.',g:'<path d="M5 27c0-9 7-11 11-15s3-9-2-9-4 6 1 6" stroke-width="2.4"/><path d="M13 27c2-6 9-7 12-10M20 27c1-3 4-4 6-5"/>'},
   lion:{n:'Golden Lion',spot:'head',p:12,craft:'alch',up:'+4 gold for every fight you win.',dn:'Rerolls cost 1 more.',g:'<circle class="w" cx="15" cy="15" r="11"/><circle class="w" cx="15" cy="16" r="6"/><circle class="k" cx="13" cy="15" r="1"/><circle class="k" cx="17" cy="15" r="1"/><path d="M14 19h2" stroke-width="1.4"/>'}
 };
-/* ---------- crew: hired at a port tavern, they live on deck and let your cargo use their crafts.
-   Rank grows with fights won and opens new rules in their crafts (RANKS). Wages are paid at every new port. ---------- */
+/* ---------- crew: hired at a port tavern, one of each role. Each role masters item classes (crafts: the CLSN codes in items.js).
+   A crew item only works if a hand aboard masters its class; ship items work on their own. Each role also has a passive
+   perk (CREWPERK). Hands gain a level from wins (RANKXP), and every level lets you raise one item of their classes a tier.
+   Wages are paid at every new port. ---------- */
 const CREW={
-  bosun:{n:'Bosun',crafts:['sea'],fee:6,wage:1,look:{body:'Sweater',head:'Shaved 3',face:'Serious',beard:'Full'},say:"Ropes, sails and a lazy crew, I keep all three moving. Give me your rigging and I'll trim any sail you fit."},
-  deckhand:{n:'Deckhand',crafts:['sea'],fee:5,wage:1,look:{body:'Striped Tee',head:'Short 5',face:'Smile Big'},say:"I'll haul, I'll heave, and I'll mind whatever sail you rig. Cheap, too."},
-  rigger:{n:'Rigger',crafts:['sea'],fee:5,wage:1,look:{body:'Gym Shirt',head:'Mohawk',face:'Cheeky',beard:'Chin'},say:"Put me up the mast. Topgallants, a lateen, studding sails: I fly the lot without a hitch."},
-  sailmaker:{n:'Sailmaker',crafts:['carp','sea'],fee:9,wage:2,look:{body:'Button Shirt 1',head:'No Hair 3',face:'Calm',beard:'Moustache 2',acc:'Glasses 2'},say:"I patch canvas and plank alike. Put me on your sails or your hull and neither gives you trouble."},
-  fencer:{n:'Fencing Master',crafts:['steel'],fee:7,wage:2,look:{body:'Blazer Black Tee',head:'Pomp',face:'Suspicious',beard:'Moustache 4'},say:"Steel is a conversation, captain. Fit a ram and I'll do the talking up front."},
-  parrot:{n:'Parrot',crafts:['steel','sea'],fee:9,wage:2,look:{body:'Fur Jacket',head:'hat-hip',face:'Smile LOL',beard:'Full 3',acc:'Eyepatch'},say:"Squawk! Sharp beak, sharp blades! Perch me by the gull, I speak its language!"},
-  marines:{n:'Marines',crafts:['steel','carp'],fee:10,wage:2,look:{body:'Tee Arms Crossed',head:'Flat Top',face:'Driven',beard:'Moustache 6'},say:"We fight in pairs and we don't break. Give us the ram or the planking and we'll hold it."},
-  steadfast:{n:'Steadfast Hand',crafts:['carp','med'],fee:9,wage:2,look:{body:'Shirt and Coat',head:'No Hair 1',face:'Old',beard:'Full 2'},say:"I've kept worse ships afloat. I'll mind the hull or the crew quarters, whichever's leaking."},
-  quartermaster:{n:'Quartermaster',crafts:['carp'],fee:6,wage:1,look:{body:'Button Shirt 2',head:'Short 3',face:'Serious',beard:'Moustache 7',acc:'Glasses 4'},say:"Every board in its place. Plank her twice or sheathe her in copper, I'll keep it sound."},
-  stoic:{n:'Stoic Helmsman',crafts:['carp','sea'],fee:9,wage:2,look:{body:'Turtleneck',head:'Shaved 2',face:'Eyes Closed',beard:'Goatee 2'},say:"Storms don't trouble me. Put me on the storm canvas and she rides it out."},
-  guncrew:{n:'Gun Crew',crafts:['gun'],fee:6,wage:1,look:{body:'Sporty Tee',head:'Twists',face:'Explaining',beard:'Chin'},say:"Point us at the enemy and give us the chase guns or the swivels. We'll do the rest."},
-  gunner:{n:'Master Gunner',crafts:['gun','steel'],fee:10,wage:2,look:{body:'Tee 2',head:'Shaved 1',face:'Rage',beard:'Moustache 3',acc:'Eyepatch'},say:"Twenty years behind a cannon. Put me on your swivels and I hit what I aim at. Mostly."},
-  cannoneers:{n:'Cannon Crew',crafts:['gun','fire'],fee:10,wage:2,look:{body:'Thunder T-Shirt',head:'Short 2',face:'Hectic'},say:"Hot shot, loud guns, short fights. Give us the powder magazine and a barrel of grapeshot."},
-  monkey:{n:'Powder Monkey',crafts:['fire'],fee:5,wage:1,look:{body:'Striped Pocket Tee',head:'Short 4',face:'Cute'},say:"I'm small, I'm quick, and I keep the powder magazine from blowing. I've only set myself on fire twice."},
-  fireeater:{n:'Fire-eater',crafts:['fire','med'],fee:9,wage:2,look:{body:'Pointing Up',head:'Mohawk 2',face:'Smile Teeth Gap',beard:'Goatee 1'},say:"Fire? I eat it for breakfast. I'll load your grapeshot, then patch up whoever it touched."},
-  herbalist:{n:'Herbalist',crafts:['med'],fee:6,wage:1,look:{body:'Sweater Dots',head:'Long Curly',face:'Smile'},say:"Roots, leaves and a kind word. Sit me by the mermaid and she'll mend us gently."},
-  monk:{n:'Tide Monk',crafts:['med','carp'],fee:9,wage:2,look:{body:'Hoodie',head:'Turban',face:'Eyes Closed'},say:"The tide teaches patience. I heal, I hold the line, and I keep the crew quarters quiet."},
-  cormorant:{n:'Cormorant',crafts:['steel','med'],fee:8,wage:2,look:{body:'Coffee',head:'Afro',face:'Calm',beard:'Moustache 5'},say:"The bird dives, fishes and bites. Set it on the mermaid and it decides who it likes. It likes you."},
-  witch:{n:'Sea Witch',crafts:['alch'],fee:7,wage:2,look:{body:'Polka Dot Jacket',head:'Long',face:'Contempt'},say:"The sea tells me which fish are poison. Carve me a kraken and I'll whisper to it."},
-  apothecary:{n:'Apothecary',crafts:['alch','med'],fee:10,wage:2,look:{body:'Paper',head:'Gray Bun',face:'Concerned',acc:'Glasses 5'},say:"One bottle heals, the next one kills. Give me the mermaid or the kraken. I never mix them up."},
-  chemist:{n:'Powder Chemist',crafts:['alch','fire'],fee:10,wage:2,look:{body:'Explaining',head:'Flat Top Long',face:'Awe',acc:'Glasses 3'},say:"Powder and venom, carefully measured. I'll gild your lion or stock your magazine. Mostly carefully."}
+  atarms:{n:'Master-at-Arms',crafts:['cw','cs'],perk:'board',fee:7,wage:2,look:{body:'Blazer Black Tee',head:'Pomp',face:'Suspicious',beard:'Moustache 4'},say:"Blades, pistols, bucklers. I'll drill your hands until they hold them right way round."},
+  gunner:{n:'Master Gunner',crafts:['sw'],perk:'powder',fee:7,wage:2,look:{body:'Tee 2',head:'Shaved 1',face:'Rage',beard:'Moustache 3',acc:'Eyepatch'},say:'Twenty years behind a cannon. I still hit what I aim at. Mostly.'},
+  bosun:{n:'Boatswain',crafts:['sx'],perk:'batten',fee:6,wage:1,look:{body:'Sweater',head:'Shaved 3',face:'Serious',beard:'Full'},say:"Ropes, sails and a lazy crew, I keep all three moving. She'll fly faster with me aboard."},
+  quartermaster:{n:'Quartermaster',crafts:['ss','sh'],perk:'smuggle',fee:6,wage:1,look:{body:'Button Shirt 2',head:'Short 3',face:'Serious',beard:'Moustache 7',acc:'Glasses 4'},say:'Every plank counted, every pump primed. And I know a man in every market.'},
+  surgeon:{n:"Ship's Surgeon",crafts:['ch'],perk:'triage',fee:8,wage:2,look:{body:'Shirt and Coat',head:'No Hair 1',face:'Old',beard:'Full 2'},say:"Bandages, grog and a steady hand. I've kept worse crews breathing."},
+  witch:{n:'Sea Witch',crafts:['cx'],perk:'tidings',fee:8,wage:2,look:{body:'Polka Dot Jacket',head:'Long',face:'Contempt'},say:"Charms, tonics and a wind that owes me favours. The sea listens when I speak."}
 };
-/* what rank 2 and rank 3 open in each craft. The best-ranked crew member with a craft sets its rank. */
-const RANKS={
-  steel:['The first weapon to fire each fight always crits.','Weapon crits ignore shield.'],
-  gun:['Cannons get 10% crit chance.','Cannon hits ignore shield.'],
-  fire:['Burn on the enemy fades half as fast.','Burning enemies can\'t gain shield.'],
-  alch:['Poisoned enemies can\'t heal.','While the enemy has 8 or more poison, its cargo charges 20% slower.'],
-  med:['Healing past full health turns into shield.','Once a fight, a blow that would sink you leaves you on 1 health.'],
-  carp:['Your shield also blocks poison.','A hit that breaks your shield stops there.'],
-  sea:['Your cargo starts every fight 15% charged.','Slows on your cargo last half as long.']
+/* each role's passive perk, read by name with crewHas() */
+const CREWPERK={
+  board:{n:'Boarding Party',d:'The weapon in the leftmost slot of your hold deals +2 damage.'},
+  powder:{n:'Powder Rations',d:'Your ship weapons get +5% crit chance.'},
+  batten:{n:'Batten Down',d:'Start every fight with 15 shield.'},
+  smuggle:{n:"Smuggler's Charm",d:'Your first reroll at a stall each day costs 1 gold less.'},
+  triage:{n:'Triage',d:'+20 max health for the rest of the voyage, the first time a surgeon signs on.'},
+  tidings:{n:'Dark Tidings',d:'The first item you use each fight fires twice.'}
 };
-const RANKXP=[0,3,7];   // fights won to reach rank 1, 2 and 3
+/* who masters a class */
+const masterOf=cls=>Object.keys(CREW).find(k=>CREW[k].crafts.includes(cls));
+/* old saves' crew, by the role that took over their work */
+const OLDCREW={fencer:'atarms',marines:'atarms',parrot:'atarms',cormorant:'atarms',gunner:'gunner',guncrew:'gunner',cannoneers:'gunner',monkey:'gunner',
+  bosun:'bosun',deckhand:'bosun',rigger:'bosun',sailmaker:'bosun',stoic:'bosun',quartermaster:'quartermaster',steadfast:'quartermaster',
+  herbalist:'surgeon',monk:'surgeon',fireeater:'surgeon',apothecary:'surgeon',witch:'witch',chemist:'witch'};
+/* the rules old crew ranks opened. Nothing reads them since crew roles came in; kept so old text and saves stay readable. */
+const RANKS={};
+const RANKXP=[0,2,5,9,14];   // wins to reach level 1 to 5
 
 /* ---------- renown: the captain's picks. Every ship draws from the same list. Orders fire once a fight on a trigger you choose
    (WHEN in battle.js, default in when). The rest change how you run the ship and are read by name with hasP(). ---------- */

@@ -235,6 +235,36 @@ const used=l=>l.reduce((a,b)=>a+DEFS[b.k].s,0);
 const isPassive=k=>!DEFS[k].cd;
 function rollTier(depth,r){r=r||Math.random;const x=r();if(depth>=16&&x<.15)return 3;if(depth>=11&&x<.38)return 2;if(depth>=5&&x<.68)return 1;return 0}
 const isCrewKey=k=>DEFS[k].tags.includes('K');
+/* ---------- item classes: every item belongs to the crew (a hand wields it) or the ship (it works on its own), and is a weapon,
+   haste, heal or shield. A crew item only works if someone aboard masters its class (CREW masters). An element (fire, venom,
+   blessed) can sit on top. One code per item: c or s, then w, x, h or s, then f, v or b for an element. Items not listed here
+   (retired ones in old saves) are worked out by clsGuess(). ---------- */
+const ICLS={dagger:'cw',pins:'cw',cutlass:'cw',harpoon:'cw',fenders:'ss',pork:'ch',tar:'sh',hook:'cx',net:'cx',compass:'sx',chest:'s',spyglass:'cx',
+  sail:'sx',rum:'cx',crows:'sw',eel:'cw',jib:'sx',mainsail:'sx',topsail:'sx',flyingjib:'sx',spinnaker:'sx',rapier:'cw',stiletto:'cw',twinblades:'cw',swordcane:'cw',
+  sabre:'cw',cutlass2:'cw',boathook:'cw',quickdraw:'cw',flintlock:'cw',pistols:'cw',lastword:'cw',jollyboat:'sw',windlass:'sx',sandglass:'sx',kite:'sx',
+  slipstream:'sx',grog:'ch',duelglove:'cw',figure8:'sx',tailwind:'cxb',windvane:'sx',bowsprit:'sx',
+  plating:'ss',ballast:'ss',anchor:'sw',figure:'ssb',chain:'sw',bulkhead:'ss',breastplate:'cs',pavise:'cs',chainmail:'cs',bastion:'ss',tortoise:'cs',fortress:'ss',
+  ram:'sw',shieldbash:'cw',gauntlet:'cw',crusher:'sw',carronade:'sw',broadaxe:'cw',halberd:'cw',maul:'cw',grapeshot:'sw',heavyshot:'sw',capstan:'ss',drydock:'sh',
+  oak:'ss',ironbound:'ss',keel:'ss',lastline:'cs',counterweight:'sw',standard:'ssb',
+  cannon:'swf',mortar:'swf',swivel:'sw',keg:'swf',flare:'cwf',firepot:'cwf',blunderbuss:'cwf',grenado:'cwf',hotshot:'swf',broadside:'sw',bombard:'swf',twinswivel:'sw',
+  crossfire:'sw',rocket:'swf',burstkeg:'swf',petard:'cwf',brand:'cwf',greekfire:'swf',fireship:'swf',hellburner:'swf',coalpan:'swf',linstock:'cx',cartridges:'cx',
+  powderhorn:'cwf',ramrod:'cx',tinderbox:'swf',furnace:'swf',kindling:'sxf',gunwale:'sx',magazine:'swf',phoenix:'shf',
+  lime:'ch',pump:'sh',puffer:'cwv',galley:'sh',teapot:'ch',ginseng:'ch',kelp:'ch',ricebowl:'ch',noodles:'ch',scorpion:'chv',fugu:'cwv',darts:'cwv',blowpipe:'cwv',
+  moray:'cwv',seasnake:'cwv',jellyfish:'cwv',glowcap:'cwv',miasma:'cwv',toxinsac:'cwv',guandao:'cw',chakram:'cw',dragonkite:'cx',stillwater:'chb',lacquer:'cs',
+  clam:'ss',abacus:'cwv',koi:'shb',jade:'chb',nettle:'cwv',moongate:'shb'};
+const CLSN={cw:'Crew weapon',cs:'Crew shield',ch:'Crew heal',cx:'Crew haste',sw:'Ship weapon',ss:'Ship shield',sh:'Ship heal',sx:'Ship haste',s:'Ship cargo'};
+const ELN={f:'Fire',v:'Venom',b:'Blessed'};
+/* a best guess for anything not in ICLS: cannons, rigging and hull armour belong to the ship, the rest to the crew */
+function clsGuess(d){const t=d.tags,has=k=>d[k]!=null||(d.start&&d.start[k]!=null)||(d.on||[]).some(h=>h[k]!=null);
+  const ship=t.includes('C')||t.includes('R')||(t.includes('A')&&!/plate|mail|gauntlet|helm|buckler/i.test(d.n));
+  const c=has('dmg')||has('dmgX')||has('burn')||has('poison')||d.adjDmg||d.tagDmg||d.adjCrit||d.tagCrit||d.tagBurn||d.tagPoison?'w':has('heal')||has('healX')||d.regen||d.adjHeal||d.tagHeal?'h':has('shield')||has('shieldX')||d.hpBonus||d.adjShield||d.tagShield?'s':'x';
+  const e=t.includes('X')||has('burn')||has('burnPerHit')?'f':t.includes('V')||has('poison')||has('poisonPerHit')?'v':'';
+  return(ship?'s':'c')+c+e}
+const CLSC={};
+/* an item's class: {kind:'crew'|'ship', cls:'cw'..'sx' (or 's' for plain ship cargo), el:'f'|'v'|'b'|''} */
+function clsOf(k){if(CLSC[k])return CLSC[k];const d=DEFS[k],code=ICLS[k]||clsGuess(d),cls=code[1]?code.slice(0,2):code;
+  return CLSC[k]={kind:code[0]==='c'?'crew':'ship',cls,el:code[2]||''}}
+const isCrewItem=k=>clsOf(k).kind==='crew';
 /* items retired from the draw: they never turn up in markets, spoils, gifts or enemy holds any more, but they stay defined so
    saved voyages that carry one keep working, and an Atlas that found one still shows it. Each ship keeps about 30 of its own,
    a steady mix of damage, support and defence, so items come back often enough to upgrade and build around. */
@@ -253,8 +283,7 @@ const NEUTRAL=KEYS.filter(k=>DEFS[k].ship==='any'&&!isCrewKey(k)&&!RETIRED.has(k
 function drawKey(r,ship){ship=ship||(G&&G.ship)||pick(r,SHIPKEYS);return r()<.2?pick(r,NEUTRAL):pick(r,poolFor(ship))}
 
 /* ---------- crafts: every ability belongs to one. On your ship an ability only works if someone on deck has its craft. Enemies need no crew. ---------- */
-const CRAFTS={steel:'Steel',gun:'Gunnery',fire:'Fire',alch:'Alchemy',med:'Medicine',carp:'Carpentry',sea:'Seamanship'};
-const CRAFTD={steel:'weapon damage and crits',gun:'cannon damage',fire:'burn',alch:'poison',med:'healing',carp:'shield',sea:'haste, charge and slow'};
+const CRAFTS={cw:'Crew weapons',cs:'Crew shields',ch:'Crew heals',cx:'Crew haste',sw:'Ship weapons',ss:'Ship shields',sh:'Ship heals',sx:'Ship haste'};
 const KEYCRAFT={dmg:'dmg',dmgX:'dmg',multi:'dmg',crit:'dmg',pierce:'dmg',burn:'fire',burnPerHit:'fire',poison:'alch',poisonPerHit:'alch',
   heal:'med',healX:'med',cleanse:'med',douse:'med',shield:'carp',shieldX:'carp',haste:'sea',charge:'sea',slow:'sea'};
 const AURACRAFT={adjDmg:'steel',adjCrit:'steel',adjCd:'sea',adjPre:'sea',edgeCd:'sea',emptyCd:'sea',tagCd:'sea',tagPre:'sea',adjShield:'carp',tagShield:'carp',
@@ -270,9 +299,13 @@ function gateFx(f,d,ok){if(!f)return f;const o={};let n=0;
     const c=keyCraft(key,d);if(c&&!ok(c))continue;o[key]=f[key];if(FXKEYS.includes(key))n++}
   return n?o:null}
 /* every craft an item's abilities use */
-function itemCrafts(k){const d=DEFS[k],s=new Set(),add=f=>{if(!f)return;for(const key in f){if(key==='grow'){for(const g in f.grow)s.add(GROWCRAFT[g]==='dmg'?dmgCraft(d):GROWCRAFT[g]);continue}const c=keyCraft(key,d);if(c)s.add(c)}};
+function itemCraftsOld(k){const d=DEFS[k],s=new Set(),add=f=>{if(!f)return;for(const key in f){if(key==='grow'){for(const g in f.grow)s.add(GROWCRAFT[g]==='dmg'?dmgCraft(d):GROWCRAFT[g]);continue}const c=keyCraft(key,d);if(c)s.add(c)}};
   add(pickFx(d));add(d.start);(d.on||[]).forEach(add);for(const key in AURACRAFT)if(d[key]!=null)s.add(auraCraft(key,d));if(d.tagDmg)s.add(auraCraft('tagDmg',d));if(d.tagCrit)s.add(auraCraft('tagCrit',d));
   return s}
+/* the class a hand must master to wield an item: a crew item's class, or nothing for ship cargo (it works on its own) */
+function itemCrafts(k){const c=clsOf(k);return new Set(c.kind==='crew'?[c.cls]:[])}
+/* can your crew wield it? cr is crewCrafts(), the classes your hands master (null outside a voyage: everything works) */
+const wields=(k,cr)=>!cr||!isCrewItem(k)||cr.has(clsOf(k).cls);
 /* how much of an item your crew can use: 'all', 'some' or 'none' */
 function itemUse(k,cr){if(!cr)return'all';const c=[...itemCrafts(k)];if(!c.length)return'all';const n=c.filter(x=>cr.has(x)).length;return n===c.length?'all':n?'some':'none'}
 
@@ -293,11 +326,11 @@ const auraV=(v,t,ratio,dot)=>ratio?+(v*(1+.25*t)).toFixed(3):Math.round(v*(dot?D
 
 /* item stats in context: its own effect, scaled, plus every aura from the rest of the hold */
 function statsOf(list,i,cr){
-  const it=list[i],d=DEFS[it.k],t=it.t,tags=d.tags,ok=c=>!cr||!c||cr.has(c);
+  const it=list[i],d=DEFS[it.k],t=it.t,tags=d.tags,mine=wields(it.k,cr),ok=()=>mine;
   const fx=gateFx(scaleFx(pickFx(d),t),d,ok)||{},s={cd:d.cd||0,fx,start:gateFx(scaleFx(d.start,t),d,ok),on:(d.on||[]).map(h=>gateFx(Object.assign(scaleFx(h,t),{ev:h.ev,tag:h.tag,icd:h.icd}),d,ok)).filter(Boolean),pre:0,boost:[],W:tags.includes('W')};
   const last=list.length-1,empty=(cr&&typeof holdCap==='function'&&G?holdCap():HOLD)-used(list);
   list.forEach((o,j)=>{if(j===i)return;const a=DEFS[o.k],tj=o.t,adj=Math.abs(j-i)===1,nm=a.n;
-    let key0='';const add=(cond,apply)=>{if(cond&&ok(auraCraft(key0,a))){apply();if(!s.boost.includes(nm))s.boost.push(nm)}};
+    let key0='';const add=(cond,apply)=>{if(cond&&wields(o.k,cr)){apply();if(!s.boost.includes(nm))s.boost.push(nm)}};
     if(adj){
       if(a.adjDmg&&(key0='adjDmg'))add(s.W&&fx.dmg!=null,()=>fx.dmg+=auraV(a.adjDmg,tj));
       if(a.adjCd&&(key0='adjCd'))add(s.cd>0,()=>s.cd*=1-auraV(a.adjCd,tj,1));
@@ -325,7 +358,7 @@ function statsOf(list,i,cr){
 }
 const FXKEYS=['dmg','multi','crit','pierce','burnPerHit','poisonPerHit','dmgX','shield','shieldX','heal','healX','burn','poison','slow','haste','charge','cleanse','douse','selfDmg','grow'];
 function pickFx(d){const o={};let any=false;FXKEYS.forEach(k=>{if(d[k]!=null){o[k]=d[k];any=true}});return any?o:null}
-function sideOf(list,cr){const o={hp:0,regen:0,gold:0},ok=c=>!cr||cr.has(c);list.forEach(it=>{const d=DEFS[it.k];if(d.hpBonus&&ok('carp'))o.hp+=auraV(d.hpBonus,it.t);if(d.regen&&ok('med'))o.regen+=auraV(d.regen,it.t);if(d.gold)o.gold+=auraV(d.gold,it.t)});return o}
+function sideOf(list,cr){const o={hp:0,regen:0,gold:0};list.forEach(it=>{const d=DEFS[it.k],ok=()=>wields(it.k,cr);if(d.hpBonus&&ok())o.hp+=auraV(d.hpBonus,it.t);if(d.regen&&ok())o.regen+=auraV(d.regen,it.t);if(d.gold)o.gold+=auraV(d.gold,it.t)});return o}
 
 /* ---------- words for effects ---------- */
 const pc=v=>Math.round(v*100)+'%';
@@ -352,9 +385,6 @@ function fxWords(f,dc){const L=[],P=(t,c)=>L.push([t,c]);if(!f)return L;dc=dc||'
   if(f.selfDmg)P(`Costs you ${f.selfDmg} health.`,null);
   if(f.grow)for(const k in f.grow)P(`Gains +${f.grow[k]} ${k==='dmg'?'damage':k} each use this fight.`,GROWCRAFT[k]==='dmg'?dc:GROWCRAFT[k]);
   return L}
-/* one ability, marked with its craft, greyed out if nobody aboard has the craft */
-function abl(t,c,cr){if(!c||!cr)return t;const on=cr.has(c);
-  return`<span class="ab${on?'':' off'}"><span class="cbx" role="img" aria-label="${on?'Your crew can work this':'Needs '+CRAFTS[c]}">${on?'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-6"/></svg>':''}</span><span class="abt">${t} <span class="crt">${craftIcon(c)}${CRAFTS[c]}</span></span></span>`}
 const EVN={crit:'When you crit',burn:'When you apply burn',poison:'When you apply poison',shield:'When you gain shield',heal:'When you heal',hurt:'When a weapon hits you',lowhp:'The first time you drop below half health',haste:'When you haste an item',adjUse:'When an adjacent item is used'};
 /* the item's text. Enemy lists are marked .enemy and never greyed out; everything else is read against your crew. */
 /* an upgrade, previewed: what your matching item says now and after, with changed numbers shown as "6 → 10" */
@@ -368,8 +398,10 @@ function upgradeHTML(it){const u=upgradeView(it);if(!u)return null;
   return`<p class="upgr">Upgrades your ${DEFS[it.k].n}: ${TIER[u.from]} → <b>${TIER[u.to]}</b></p>${u.cd?`<p class="upgr-cd">Cooldown <s class="was">${u.cd[0]}s</s> → <b class="now">${u.cd[1]}s</b></p>`:''}<p class="desc">${u.lines.join(' ')}</p>`}
 function describe(list,i,cr){
   if(cr===undefined)cr=list.enemy?null:crewCrafts();
-  const it=list[i],d=DEFS[it.k],t=it.t,s=statsOf(list,i,cr),full=statsOf(list,i),L=[],g=new Set(),dc=dmgCraft(d);
-  const A=(key,f)=>{if(d[key]!=null)L.push(abl(f(d[key]),auraCraft(key,d),cr))};
+  const it=list[i],d=DEFS[it.k],t=it.t,s=statsOf(list,i,cr),full=statsOf(list,i),L=[],g=new Set(),dc=dmgCraft(d),C=clsOf(it.k),on=wields(it.k,cr);
+  const abl=t=>on?t:`<span class="ab off"><span class="abt">${t}</span></span>`;
+  if(C.kind==='crew'&&cr){const m=masterOf(C.cls);L.push(on?`<span class="wield">${craftIcon(C.cls)}Wielded by your ${CREW[m].n}.</span>`:`<span class="wield off">${craftIcon(C.cls)}Needs ${an(CREW[m].n)} aboard to wield.</span>`)}
+  const A=(key,f)=>{if(d[key]!=null)L.push(abl(f(d[key])))};
   A('adjDmg',v=>`Adjacent weapons deal +${auraV(v,t)} damage.`);
   A('adjCd',v=>`Adjacent items charge ${pc(auraV(v,t,1))} faster.`);
   A('adjCrit',v=>`Adjacent weapons get +${pc(auraV(v,t,1))} crit chance.`);
@@ -391,14 +423,14 @@ function describe(list,i,cr){
   A('hpBonus',v=>`+${auraV(v,t)} max health.`);
   A('regen',v=>`Heal ${auraV(v,t)} every second.`);
   A('gold',v=>`Earn +${auraV(v,t)} gold for every fight you win.`);
-  const low=([x,c])=>abl(x[0].toLowerCase()+x.slice(1),c,cr);
-  fxWords(full.fx,dc).forEach(([x,c])=>L.push(abl(x,c,cr)));
-  if(full.start)L.push('When a fight starts: '+fxWords(full.start,dc).map(low).join(' '));
-  full.on.forEach(h=>L.push(`${h.ev==='use'?`When you use a ${TAGN[h.tag]} item`:EVN[h.ev]}: `+fxWords(h,dc).map(low).join(' ')));
+  const low=([x])=>x[0].toLowerCase()+x.slice(1);
+  fxWords(full.fx,dc).forEach(([x])=>L.push(abl(x)));
+  if(full.start)L.push(abl('When a fight starts: '+fxWords(full.start,dc).map(low).join(' ')));
+  full.on.forEach(h=>L.push(abl(`${h.ev==='use'?`When you use a ${TAGN[h.tag]} item`:EVN[h.ev]}: `+fxWords(h,dc).map(low).join(' '))));
   if(s.pre&&d.cd)L.push(`Starts fights ${pc(s.pre)} charged.`);
   if(s.boost.length)L.push(`Boosted by your ${s.boost.join(', ')}.`);
   const all=[full.fx,full.start,...full.on];
   all.forEach(f=>{if(!f)return;if(f.burn||f.burnPerHit)g.add('Burn hits every half second, then drops by 1.');if(f.poison||f.poisonPerHit)g.add('Poison hits every second and ignores shield.');
     if(f.slow)g.add('Slowed items charge at half speed.');if(f.haste)g.add('Hasted items charge at double speed.');if(f.charge)g.add('Charging moves an item\'s cooldown forward.')});
-  return{s,L,g:[...g],tags:d.tags.map(x=>TAGN[x])};
+  return{s,L,g:[...g],tags:[CLSN[C.cls]].concat(C.el?[ELN[C.el]]:[])};
 }

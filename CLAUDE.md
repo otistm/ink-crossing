@@ -47,6 +47,7 @@ Otis is the designer. He doesn't read code. He judges changes by playing them on
 | atlas.js | The cartographer's log and the Atlas |
 | coach.js | The maiden voyage: `TUT` steps, Ansel's coach bubble and dimmer, the fixed six-stop map |
 | (fittings) | `FITTINGS` and `SPOTS` live in world.js, `hasF`, `equip`, `canEquip`, `holdCap` in state.js, their fight effects in battle.js, the shipwright in port.js |
+| (stalls) | `STALLS`, `stockFor`, `mkStalls` in people.js, drawn by `stallHTML` in port.js |
 | desk.js | The captain's desk side panel on big screens (`renderDesk`, `DESK`) |
 | main.js | Startup (always last) |
 
@@ -72,11 +73,11 @@ Every item is one `I(key, name, size, cooldown, tags, ship, glyph|crewLook, fiel
 4. Push the branch and share the Vercel preview link with Otis. Merge to `main` only when he's happy.
 
 ## The maiden voyage (the only tutorial)
-- The tutorial is the maiden voyage (`startTutorial()` in coach.js): a fixed six-stop map, one lesson per stop. Gullhaven (items, then crew: the Rapier arrives faded and comes alive when the Fencing Master signs on), a training hulk (fighting, then renown: `G.renown` starts one short of level 1 so the win brings a captain's pick), an uncharted isle (landmarks), Saltmere (fittings, from a fixed bench), the examiner (everything together), the Guild hall (finish).
+- The tutorial is the maiden voyage (`startTutorial()` in coach.js): a fixed six-stop map, one lesson per stop. Gullhaven (ship cargo works alone, crew cargo needs a hand: the Armory refuses you until the Master-at-Arms signs on), a training hulk (fighting, then renown: `G.renown` starts one short of level 1 so the win brings a captain's pick), an uncharted isle (landmarks), Saltmere (fittings, from a fixed bench), the examiner (everything together), the Guild hall (finish).
 - Each port node lists the places open for its lesson in `open`; `tutOpen(view)` closes the rest during the trial.
 - The game reports moments with `coach(event)`: `port`, the place opened (`market`, `tavern`, `wright`, `docks`, `harbour`), `bought`, `moved`, `hired`, `fitted`, `chart`, `sail`, `fight`, `renown`, `perkDone`, `spoils`, `spoilsTaken`, `fishing`, `fishDone`, `landmarkOpen`, `landmark`.
 - A step may have `skipIf` (a function): `advance()` skips it when the player already did what it asks. Action steps show no button, so their line stays until the player acts; explanations show Next, the last step Finish.
-- The trial's Gullhaven teaches buying, the crew gate (the Rapier faded, then Ready), and order (the Jib Sail to the Rapier's left, then the Bosun for Seamanship); Saltmere stocks a second Rapier to show upgrading. Its captain's picks are rules only (`perkPick()` leaves orders out while `G.tut`).
+- The trial's Gullhaven teaches the Jib Sail from the Shipyard, the Armory closed, the Master-at-Arms, the Rapier, and order (the Jib Sail to the Rapier's left); Saltmere's Armory stocks a second Rapier to show upgrading. Its shops list `offers` (shipyard) and `stalls`. Its captain's picks are rules only (`perkPick()` leaves orders out while `G.tut`).
 - Each step in `TUT` has `when` (the event that shows it), `until` (the event that moves on, or `next`/`finish`), an optional `target` to highlight, and `pause` to hold the fight. The bubble's label names the stop ("Maiden voyage, stop 2 of 6").
 - If you rename a screen element a step targets, or change when one of those events fires, update `TUT` and replay the maiden voyage.
 - The maiden voyage uses `G.tut` and seed `TUTORIAL`. `save()` does nothing during it, so a voyage in progress is never overwritten. Finishing sets `A.tutDone`. (`A.tips` and `A.tipsOff` remain in old saves but nothing reads them.)
@@ -85,26 +86,23 @@ Every item is one `I(key, name, size, cooldown, tags, ship, glyph|crewLook, fiel
 - Real voyages have no tips: Ansel only speaks in the maiden voyage. Its steps use `bubble()`, which shows a button straight away (no reading timer): Next on explanations, none on a step that waits for the player to do something, Finish on the last step.
   - The bubble lets taps through; only its buttons are tappable.
 
-## Crafts and crew
-- Voyages start bare (no cargo, no crew, 30 gold). The first port of sea 1 stocks the ship's `start` items and `crew` hires (port.js), so `SHIPS[k].start` and `.crew` mean "what Gullhaven stocks for her", not what she carries.
-- Every ability belongs to a craft (`CRAFTS` in items.js). `KEYCRAFT` and `AURACRAFT` map effect and aura fields to crafts; damage is Gunnery on cannons and Steel otherwise.
-- `statsOf(list,i,cr)` drops abilities whose craft isn't in `cr` (a Set from `crewCrafts()`), so fights need no gating of their own. Pass `cr` for the player's cargo only. Enemy lists carry `list.enemy=true` and are never gated.
-- `describe()` shows every ability with its craft and greys out missing ones (`abl()`). `itemUse(k,cr)` says 'all', 'some' or 'none' for the faded look in the hold.
+## Item classes, crew and the market's stalls
+- Voyages start bare (no cargo, no crew, 30 gold). The first port of sea 1 stocks the ship's `start` items (each on the stall that sells its class) and `crew` hires (port.js), so `SHIPS[k].start` and `.crew` mean "what Gullhaven stocks for her", not what she carries.
+- Every item has a class in `ICLS` (items.js): crew or ship, then weapon, haste, heal or shield, then an optional element (fire, venom, blessed). `clsOf(k)` returns `{kind,cls,el}`; `CLSN`/`ELN` name them; items not in `ICLS` (retired ones) fall back to `clsGuess()`. A new item needs an `ICLS` entry.
+- Ship items always work. A crew item works only if a hand aboard masters its class: `crewCrafts()` is the Set of classes your crew master (the role's `crafts`), `wields(k,cr)` checks one item, and `statsOf(list,i,cr)` drops a crew item's whole effect (and its auras) when nobody wields it. Enemy lists carry `list.enemy=true` and are never gated. `describe()` adds "Wielded by" or "Needs" and greys the lines.
+- `CREW` (world.js) is six roles, one of each per ship: `atarms`, `gunner`, `bosun`, `quartermaster`, `surgeon`, `witch`. Each has `crafts` (classes mastered), `perk` (a `CREWPERK` key, read with `crewHas(perk)`), fee, wage, look and `say`. Perks: `board` and `batten` in `setupFight()`, `powder` in `applyFx()`, `tidings` in `fire()`, `smuggle` on the stall reroll, `triage` in `hire()` (`G.triage`, added by `shipHP()`).
+- Levels come from wins (`RANKXP`, `crewRank()`). Each new level adds `c.up`; `crewUps()` (battle.js) offers `crewUpPick()` after a win: raise one item of that hand's classes a tier, or save it for the ship card's "Upgrade an item".
+- Old saves: `mapCrew()` in state.js turns old crew keys into roles through `OLDCREW` (one of each, extras paid 5 gold) and maps saved taverns. `crewFromOldSave()` still handles saves from before crew. Don't remove either.
 - Every character (crew, NPCs, Ansel) is an Open Peeps bust (CC0) built from the atoms set: a look `{body,head,face,beard,acc}` names one part per layer by its atom file name, like `head:'hat-beanie'`. Crew looks are in `CREW` (world.js), people's in `NPCS` (people.js); `ghost:1` gives a dashed ring. `peeps.js` stacks the layers; the parts live in `peep-parts.js`, which is generated. To use a new part, put it in a look and run `npm run peeps`, then `npm run peeps:color` (it reads the atoms folder from `PEEPS_DIR` or `~/Downloads/Flat Assets/Flat Assets/Separate Atoms` and copies in only the parts looks use). `node tools/peeps.mjs --sheet` writes `tools/peeps-sheet.html` with every part to pick from.
-- Crew are `CREW` in world.js (crafts, fee, wage, and `say`: their pitch at the tavern bar). Their portraits are item rows tagged K, which are never drawn as cargo. `G.crew` is a list of `{k,xp,m}`; rank comes from `RANKXP`, rules from `RANKS`, and `B.cr` holds each craft's rank in a fight.
-- A new item ability field needs a craft in `KEYCRAFT` (or `AURACRAFT`) and words in `fxWords()`, or it will slip past the gate.
-- Old saves get crew from `crewFromOldSave()` in state.js. Don't remove it.
+- The market is four stalls (`STALLS` in people.js): `yard` (ship cargo, anyone, its keeper from `sellerOf()`), `armory` (crew weapons and shields, needs the Master-at-Arms, Odo), `apoth` (crew heals, the Surgeon, Sister Vane) and `charms` (crew haste, the Sea Witch, Pell). `stallOpen(st)` checks the hand; a closed stall shows its goods greyed and the keeper's `refuse` line with a button to the tavern. The shipyard's goods are `S.offers`, the others `S.stalls[st]` (`mkStalls()`, made lazily for old saves). `PV.stall` is the open tab; `stockFor()` stocks a stall from your ship's pool and the shared cargo, then any ship's when that runs thin.
 
 ## Fittings
-- A fitting is one row in `FITTINGS` (world.js): name, spot, price, `craft`, optional `hp` (health in fights), its text in parts (`shape`, `up`, `dn`; `d` is built from them) and a 30×30 glyph.
-- Every fitting is a station a crew member mans (`c.post` in `G.crew` is the spot). `fitOn(k)`: fitted and manned, so its `up` works. `fitDown(k)`: its `dn` applies, which is while manned by a hand without its `craft` (or, with `always:1`, also while nobody mans it). `shape` (a hold slot, a berth) holds regardless, through `hasF(k)`. Positive `hp` needs a hand, negative `hp` is the downside.
-- In fights read them through `fOn(k)` and `fDn(k)` (battle.js, cached in `setupFight()`), and call `postFx(k)` whenever a station does its job: it makes that hand's face jump on your fighter card (`deckHTML()`) and earns them double experience from a win.
-- `autoPost()` posts idle hands at unmanned fittings (on buying a fitting, on hiring, and once for old saves via `G.posted`); `postHand(i,spot)` moves a hand; the ship card's `stationHTML()` shows who mans each fitting with faces to tap.
-- Fittings change rules or the ship's shape (berths, hold size, positions, the storm), not plain numbers. Fight effects go in `setupFight()` (start of fight), `step()` (charge speed, storm, ticks), `fire()` or `applyFx()`/`burnOn()`/`poisonOn()` (damage, crits, healing), split into `fOn` and `fDn`. `setupFight()` is shared with `tools/sim.mjs`, so new effects show up in the balance numbers.
+- A fitting is one row in `FITTINGS` (world.js): name, spot, price, optional `hp` (health in fights), its text in parts (`shape`, `up`, `dn`; `d` is built from them) and a 30×30 glyph. Its effect is written where it applies: `hasF(key)` outside fights, `fOn(key)`/`fDn(key)` in battle.js (its effect and its trade-off, cached in `setupFight()`). Crew stations (0.37) are gone; `craft` fields on fittings are left over and unused. Fittings are due a redesign as rarer rule-changers.
+- Fittings change rules or the ship's shape (berths, hold size, positions, the storm), not plain numbers. Fight effects go in `setupFight()` (start of fight), `step()` (charge speed, storm, ticks), `fire()` or `applyFx()`/`burnOn()`/`poisonOn()` (damage, crits, healing), read through `fOn` and `fDn`. `setupFight()` is shared with `tools/sim.mjs`, so new effects show up in the balance numbers.
 - Every hold has `HOLD` (9) slots, enemies included. The player's hold size is `holdCap()`, never a literal number.
 - **Rule: nothing may ever increase the number of hold slots.** No item, fitting, landmark, captain's pick, crew rank or event adds slots. Things may only take slots away (like Double Planking). Extra space belongs in the locker or crew berths instead.
 - Losing a fight you survive removes one fitting (`loseFit()` in battle.js, seeded by voyage, stop and day).
-- After adding or changing a fitting, run `npm run sim:fits`. It prints each fitting's win rate against having none, manned by a hand without its craft and by one with it. Differences under about 3 points are noise.
+- After adding or changing a fitting, run `npm run sim:fits`. It prints each fitting's win rate against having none. Differences under about 3 points are noise.
 
 ## Renown and captain's picks
 - The four systems each have a job, so don't let them overlap: items are what happens, crew are who can make it happen (crafts), fittings are the ship's shape and rules, and renown is the captain's decisions. Avoid plain "+damage" or "+speed" on fittings and renown.
@@ -117,7 +115,7 @@ Every item is one `I(key, name, size, cooldown, tags, ship, glyph|crewLook, fiel
 - The market is a seller's stall (`stallHTML()` and `layStall()` in port.js): the top half is the seller with their speech bubble (`.talk`) beside them, the bottom half is the table with the 4 offers as large goods (`.good`, `data-g`). The bubble has their pitch and the Buy button for the chosen good (`PV.msel`); tapping the chosen good again does nothing. Goods also drag into the hold or locker through `bindHold`'s `ext.from` (like spoils), paying on drop (`buyInto` in `port()`). On big screens `layStall()` sizes the seller to the space the table leaves.
 - Sellers are `SELLERS` in people.js: `short`, `n`, a peep `look`, `lean` (tags they stock: 2 of the 4 offers lean that way, via `stallItem()`), one pitch per cargo tag in `say`, and `up`, `broke`, `out` lines. `sellerOf(id)` picks one per port from the voyage seed (Marta at Gullhaven and in the tutorial) and stores it as `S.seller`.
 - Show me more adds `.sweeping` to the stall for half a second, then redraws with `restock` set so the new goods get `.thump` and the seller `.popup`.
-- The tutorial's market step targets `#stall`. The bot taps each `[data-g]` and then `.talk .buy`.
+- The tutorial's market steps target `#stall`, `[data-st="armory"]` and `.stallsec`; switching tabs fires `coach(st)`. The bot opens each open tab, taps each `[data-g]` and then `.talk .buy`.
 
 ## The tavern
 - `tavernHTML()` draws the bar scene and the hand you're talking to in a `.talk` bubble; `layBar()` (port.js) fits them. The bubble never covers a face: under the hands when it fits; in a wide, short room (640px and up) beside them (`.talk.side`, `.barroom.sided` fades the other hands); otherwise the scene shrinks to 45 to 70% and the room grows so the screen scrolls. Opening "How they grow" re-runs `layBar()`.
@@ -160,7 +158,7 @@ Every item is one `I(key, name, size, cooldown, tags, ship, glyph|crewLook, fiel
 - `upgradeView(it)`/`upgradeHTML(it)` (items.js) preview an upgrade: your matching item's text now and after, with changed numbers shown as "6 → 12", the new tier and any cooldown change. Used by the market bubble and spoils.
 - `affects(list,i)` (ui.js) is which items an item works on: its haste and charge targets and the items its auras boost (from `statsOf().boost`). On desktop (`HOVERS`), hovering a `.board .item` shows `showItemTip()` and outlines those items (`.src`, `.aff`); the item sheet lists them on phones.
 - On desktop, hovering a chart stop shows `nodeTip()` (chart.js) built from `nodeInfo(n,true)`, the same text as the Sail here card; hovering a stall good or a hand at the bar clicks it after a short pause, so its bubble shows. Phones keep tap.
-- The tavern bubble's "How they grow" lists `RANKS` for rank 2 and 3 with `rankXP()`.
+- The tavern bubble shows the role's perk and which of your crew cargo they'd wield; "How they grow" gives the level thresholds.
 - The port header's Chart button opens `chartPeek()` (port.js): `mapSVG()` in a sheet, nothing tappable.
 
 ## Celebrations
@@ -234,7 +232,7 @@ Two captains on the same voyage code must meet the same map, enemies, events, NP
 - Start a voyage: pick a ship, Gullhaven's intro appears with a bare ship and 30 gold, the market and tavern lead with the ship's own gear and hands, and Hock is on the dock.
 - Buy, drag items in the hold, sell by dragging onto Set sail, and check the upgrade chevrons.
 - Win a fight with a full hold: sell onto Sail on, drag a spoil into the hold, drag it back onto its card, then take one and sail on.
-- Buy an item whose craft nobody has: its ability is crossed out and it looks faded. Hire someone with that craft at the tavern and it comes alive.
+- The Armory, Apothecary and Charms refuse you until the right hand is aboard. Hire them and the stall opens; a crew item nobody wields looks faded until its hand signs on.
 - Sail to a threat, fight at 1× and with Skip, take spoils, and see the log update.
 - Try a fishing spot, an NPC and an event.
 - Refresh on the chart, then Continue voyage resumes where you were.

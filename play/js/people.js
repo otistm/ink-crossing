@@ -81,17 +81,17 @@ const SELLERS={
     say:{C:"Hear that? That's the sound of their hull giving up.",X:'Light it, throw it, run. In that order.',W:"Bit quiet for my taste, but it'll do the job.",
       A:'Armour is for people who expect to get hit. Fair enough.',F:'Eat something. Hungry gunners miss.',V:'Poison is slow. I like things that go bang. Still, it works.',
       R:'Faster ship, more broadsides. Simple sums.',T:'Useful. Not loud, but useful.','*':'Everything here goes bang, or helps something go bang.'}},
-  vane:{short:'Sister Vane',n:'Sister Vane',look:{body:'Turtleneck',head:'Long Bangs',face:'Serious'},lean:['V'],
+  vane:{short:'Sister Vane',n:'Sister Vane',refuse:'Without a surgeon aboard these would do more harm than good. Bring me one and we will talk.',look:{body:'Turtleneck',head:'Long Bangs',face:'Serious'},lean:['V'],
     out:'The shelf is bare. The sea will provide again.',up:'A twin to the one you carry. Together they grow stronger.',broke:'Patience. Gold comes to those who survive.',
     say:{V:'A drop is a kindness. Two drops is a lesson.',F:"Food heals. Most of it. I'd check.",X:'Fire is quick. I prefer things that take their time.',
       W:'A blade is honest. I admire that.',C:"Loud. Crude. Effective, I'm told.",A:'Protection. Wise. Not everyone out there is as gentle as me.',
       R:'The wind serves those who ask it nicely.',T:'A tool for careful hands.','*':'Everything on this counter has a purpose.'}},
-  odo:{short:'Odo',n:'Odo Crane',look:{body:'Killer',head:'Medium 2',face:'Cheeky',beard:'Goatee 2'},lean:['W'],
+  odo:{short:'Odo',n:'Odo Crane',refuse:"No Master-at-Arms aboard? Then nobody on your deck knows which end to hold. I don't sell steel to amateurs.",look:{body:'Killer',head:'Medium 2',face:'Cheeky',beard:'Goatee 2'},lean:['W'],
     out:"Cleaned out. You didn't see me, I didn't sell you nothing.",up:'Matches the one in your hold. Funny, that. Must be fate.',broke:"Credit? Captain, I'm a fence, not a priest.",
     say:{W:'Fell off a navy ship. Into my hands. Very careful fall.',C:"Don't ask where the rest of the battery went.",X:"Smells of smoke because it's honest, not because it's stolen.",
       V:'Never touched it myself. Gloves, every time.',F:'Even crooks eat. Fresh, mostly.',A:"Last owner won't be needing it. Don't ask why.",
       R:'Off a racing sloop. The owner was racing me at the time.',T:'Tools. Legit. Mostly.','*':"Everything's for sale. Some of it is even mine."}},
-  pell:{short:'Pell',n:'Pell Rigby',look:{body:'Button Shirt 1',head:'Twists 2',face:'Driven',acc:'Glasses 3'},lean:['R','T'],
+  pell:{short:'Pell',n:'Pell Rigby',refuse:"Charms sleep until a witch wakes them. No witch aboard, no sale. Sorry, rules of the trade.",look:{body:'Button Shirt 1',head:'Twists 2',face:'Driven',acc:'Glasses 3'},lean:['R','T'],
     out:'Shelves empty! Stock: none. Joy: also none.',up:'Oh, that pairs with yours. Snug fit. Lovely.',broke:'Short on coin? Tides turn. So will your luck.',
     say:{R:"Rig this right and she'll fly. I tied the knots myself.",T:"Precision made. Well. Made. It's made.",W:"Balanced at the third rivet. You'll feel it.",
       C:'Mind the recoil. Brace your rigging first.',X:'Fire near the rigging? Bold. I respect bold.',V:'Measured doses only. I wrote the label.',
@@ -103,12 +103,23 @@ const SELLERS={
       R:'Sails and ropes. Not my trade, but it is sound.',T:'Good iron in that.','*':'Built to last. Like me.'}}};
 /* who keeps this port's stall: Marta at home (and in the tutorial), otherwise one of the travellers */
 function sellerOf(id){const S=G.shops[id];if(S&&S.seller)return S.seller;
-  const trav=Object.keys(SELLERS).filter(k=>k!=='marta');
+  const trav=Object.keys(SELLERS).filter(k=>k!=='marta'&&!SELLERS[k].refuse);   // the stall keepers (refuse) keep their own stalls
   const k=G.tut||(G.sea===0&&id===G.map.start)?'marta':trav[ri(RNG(G.seed,'seller',id),trav.length)];
   if(S)S.seller=k;return k}
 /* the seller's line for an item: their pitch for its kind of cargo, the kind they care about first */
 function pitch(sk,o){const P=SELLERS[sk],t=DEFS[o.k].tags,order=P.lean.concat(['C','X','V','F','A','R','T','W']);
   const tag=order.find(x=>t.includes(x));return P.say[tag]||P.say['*']}
+/* ---------- the market's stalls: the shipyard sells ship cargo to anyone; the armory, apothecary and charm seller sell crew cargo,
+   and only to a captain with a hand aboard who masters it (need). sk is the keeper; the shipyard's is sellerOf(). ---------- */
+const STALLS={yard:{n:'Shipyard',ok:k=>!isCrewItem(k)},armory:{n:'Armory',ok:k=>['cw','cs'].includes(clsOf(k).cls),need:'atarms',sk:'odo'},
+  apoth:{n:'Apothecary',ok:k=>clsOf(k).cls==='ch',need:'surgeon',sk:'vane'},charms:{n:'Charms',ok:k=>clsOf(k).cls==='cx',need:'witch',sk:'pell'}};
+const stallOpen=st=>!STALLS[st].need||!!(G.crew&&G.crew.some(c=>c.k===STALLS[st].need));
+const stallKeeper=(st,id)=>STALLS[st].sk||sellerOf(id);
+/* stock for a stall: your ship's pool and the shared cargo first, then any ship's when that runs thin */
+function stockFor(r,depth,st){const ok=STALLS[st].ok;for(let n=0;n<40;n++){const it=randItem(r,depth);if(ok(it.k)&&it.k!=='chest')return it}
+  const pool=KEYS.filter(k=>!isCrewKey(k)&&!RETIRED.has(k)&&k!=='chest'&&ok(k));return{k:pool[ri(r,pool.length)],t:rollTier(depth,r)}}
+/* every stall's goods for this visit (the shipyard's are S.offers, the rest S.stalls), seeded by voyage, port and visit */
+function mkStalls(id,depth){const o={};for(const st of ['armory','apoth','charms']){const r=RNG(G.seed,'stall',id,st,G.shopVisit||0);o[st]=Array.from({length:4},()=>stockFor(r,depth,st))}return o}
 /* stock for a stall: half of it leans to what the seller deals in */
 function stallItem(r,depth,sk,i){if(i<2){for(let n=0;n<14;n++){const it=randItem(r,depth);if(DEFS[it.k].tags.some(x=>SELLERS[sk].lean.includes(x)))return it}}
   return randItem(r,depth)}

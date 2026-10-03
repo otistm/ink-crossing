@@ -26,6 +26,10 @@ function setupFight(n,f,board){
      P:mkSide(sh.n,pMax,board.map(x=>({...x})),[sh.trait],G.sea,crewCrafts()),E:mkSide('The '+f.e.n,f.hp,f.list,f.e.traits,G.sea)};
   const P=B.P,E=B.E;
   for(const S of [P,E])S.items.forEach(it=>{if(it.s.cd)it.c=it.s.cd*it.s.pre});
+  // the crew's perks
+  B.powder=crewHas('powder');B.tidings=crewHas('tidings');
+  if(crewHas('batten'))P.shield+=15;
+  if(crewHas('board')){const it=P.items[0];if(it&&clsOf(it.k).cls.endsWith('w')&&it.s.fx.dmg!=null)it.s.fx.dmg+=2}
   if(hasT(P,'bulwark'))P.shield+=15;if(hasC('light'))P.shield+=20;
   P.items.forEach(it=>{if(!it.s.cd)return;if(hasC('whale'))it.s.cd=Math.round(it.s.cd*9)/10;if(hasC('current'))it.c=Math.max(it.c,it.s.cd*.25)});
   if(hasT(E,'smoke'))P.items.forEach(it=>it.sl=3);
@@ -109,7 +113,7 @@ function applyFx(S,F,it,i,f,depth){
   if(f.dmg!=null||f.dmgX){const W=DEFS[it.k].tags.includes('W'),C=DEFS[it.k].tags.includes('C'),me=S===B.P;
     let base=(f.dmg||0)+(g.dmg||0)+xVal(S,F,f.dmgX);
     if(me&&C&&fDn('grapeshot'))base=Math.max(1,base-2);
-    const cr=me?B.cr:{},cc=(f.crit||0)+(me&&C&&(cr.gun||0)>=2?.1:0);
+    const cr=me?B.cr:{},cc=(f.crit||0)+(me&&C&&(cr.gun||0)>=2?.1:0)+(me&&B.powder&&clsOf(it.k).cls==='sw'?.05:0);
     for(let k=0;k<(f.multi||1);k++){let d=base;let c=cc&&Math.random()<cc;if(me&&W&&!C&&(cr.steel||0)>=2&&!B.firstCrit){B.firstCrit=true;c=true}if(c){d*=2;if(it.rec)it.rec.crits++}
       if(c&&me&&fOn('gull')&&!B.gullDone){B.gullDone=true;postFx('gull');S.items.forEach(x=>{if(x.s.cd)x.h=Math.max(x.h,2)});pop(S.fel,'The gull cries!','haste')}
       const pr=f.pierce||(me&&C&&(cr.gun||0)>=3)||(me&&c&&W&&!C&&(cr.steel||0)>=3)||(me&&W&&fOn('swivel')&&B.ends.includes(it)&&postFx('swivel'));
@@ -160,6 +164,7 @@ function act(k,S,F){const T=TRAITS[k],x=T.x?T.x(S.sea):0;
 function fire(S,F,it,i){
   squish(it.el,'fire');it.rec.uses++;
   applyFx(S,F,it,i,it.s.fx,0);
+  if(S===B.P&&B.tidings&&!B.tidDone){B.tidDone=true;pop(it.el||S.fel,'Dark tidings!','haste');applyFx(S,F,it,i,it.s.fx,0)}
   if(S===B.P&&fOn('magazine')&&!B.magDone&&DEFS[it.k].tags.includes('C')){B.magDone=true;postFx('magazine');pop(it.el||S.fel,'Again!','haste');applyFx(S,F,it,i,it.s.fx,0)}
   emit(S,F,'use',it,0);emit(S,F,'adjUse',it,0);
 }
@@ -237,11 +242,13 @@ function end(win){
     else{lines.push('You slip past and sail on, empty-handed.');btn='Back to the chart';next=chart}
   }
   // every win teaches the crew; a hand whose station did its job this fight learns twice as much
-  if(win&&G.crew){G.crew.forEach(c=>{const was=crewRank(c);c.xp+=1+(c.post&&B.posts[c.post]?1:0);const now=crewRank(c);
-    if(now>was){const C=CREW[c.k];lines.push(`${C.n} is now rank ${now}: ${C.crafts.map(x=>RANKS[x][now-2]).join(' ')}`);logL(`${C.n} made rank ${now}.`)}})}
+  // every win teaches the crew. A new level is an upgrade for one item of the classes that hand masters (crewUps, after the result)
+  if(win&&G.crew){G.crew.forEach(c=>{const was=crewRank(c);c.xp++;const now=crewRank(c);
+    if(now>was){const C=CREW[c.k];c.up=(c.up||0)+(now-was);lines.push(`${C.n} reached level ${now}: raise one of your ${C.crafts.map(x=>CRAFTS[x].toLowerCase()).join(' or ')} a tier.`);logL(`${C.n} reached level ${now}.`)}})}
   if(win&&!(k==='b'&&G.sea>=2)){const gain=k==='b'?3:k==='e'?2:1,was=renownLvl();G.renown=(G.renown||0)+gain;
     lines.push(`+${gain} renown.${renownLvl()>was?` Renown ${renownLvl()}! Make a captain's pick.`:''}`);
     const nx=next;next=()=>perksOwed()>0?perkPick(nx):nx()}
+  if(win){const nx=next;next=()=>crewUps(nx)}
   save();
   setTimeout(()=>{draw();const ov=win?victoryCard(head,lines,btn):defeatCard(head,lines,btn,G.hull<=0);
     const b=document.getElementById('next');b.focus();b.onclick=()=>{ov.remove();next()};
@@ -324,6 +331,18 @@ function loseFit(n){const have=Object.keys(SPOTS).filter(s=>fitIn(s));if(!have.l
   const spot=have[ri(RNG(G.seed,'lostfit',n.id,G.day),have.length)],k=G.fit[spot];G.fit[spot]=null;
   if(k==='studding')updateReveal();logL(`Lost my ${FITTINGS[k].n} in the fight.`);return k}
 /* a renown level: pick 1 of 3 captain's picks, offered by the voyage code. Orders then ask when the crew should carry them out. */
+/* crew levels: every level a hand gains is one upgrade for an item of the classes they master. After a win each new one is
+   offered in turn; one you save (or can't use yet) waits on the ship card's crew list. */
+const upItems=c=>G.board.concat(G.locker||[]).filter(it=>CREW[c.k].crafts.includes(clsOf(it.k).cls)&&it.t<3);
+function crewUps(done,skip){skip=skip||new Set();const c=(G.crew||[]).find(c=>c.up>0&&!skip.has(c)&&upItems(c).length);if(!c)return done();
+  skip.add(c);crewUpPick(c,()=>crewUps(done,skip))}
+function crewUpPick(c,done){const C=CREW[c.k],list=upItems(c),cls=C.crafts.map(x=>CRAFTS[x].toLowerCase()).join(' or ');
+  const ov=overlay(`<div class="cuhead"><span class="o-icon crewic">${crewFace(c.k)}</span><div><h2>${C.n}, level ${crewRank(c)}</h2><p class="soft">${list.length?`Pick one of your ${cls} to raise a tier.`:`You carry none of your ${cls} below Diamond yet. The upgrade waits on your ship card.`}</p></div></div>
+    <div class="picks">${list.map((it,i)=>`<button class="pick" data-u="${i}"><span class="pi o-icon t${it.t} c-${kindOf(it.k)}">${icon(it.k)}</span><div><b>${DEFS[it.k].n}</b><span class="d">${TIER[it.t]} → <b>${TIER[it.t+1]}</b>${G.locker&&G.locker.includes(it)?', in your locker':''}</span></div></button>`).join('')}</div>
+    <button class="ghost" data-a="later">${list.length?'Save it for later':'Fair enough'}</button>`,true);
+  ov.addEventListener('click',e=>{const p=e.target.closest('[data-u]');
+    if(p){const it=list[+p.dataset.u];it.t++;c.up--;flash={ref:it,kind:'up'};logL(`${C.n} helped raise the ${DEFS[it.k].n} to ${TIER[it.t]}.`);save();ov.remove();toast(`${DEFS[it.k].n} raised to ${TIER[it.t]}`);done();return}
+    if(e.target.closest('[data-a]')){ov.remove();done()}})}
 function perkPick(done){
   const taken=G.perks||[],pool=Object.keys(PERKS).filter(k=>!taken.includes(k)&&!(G.tut&&PERKS[k].order)),   // the trial offers rules only, no orders to time
     r=RNG(G.seed,'perk',taken.length),opts=[];

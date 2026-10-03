@@ -1,7 +1,7 @@
 /* Ink Crossing: the tutorial (a short guided first voyage with Ansel as coach) and one-time tips for everything else. */
 "use strict";
 /* The maiden voyage: the Guild's trial run, six stops that each teach one part of the game by playing it.
-   Gullhaven: items, then the crew who make them work. The training hulk: a fight, then renown and a captain's pick.
+   Gullhaven: ship cargo, then crew cargo and the hand who wields it. The training hulk: a fight, then renown and a captain's pick.
    The uncharted isle: a landmark. Saltmere: a fitting at the shipwright. The examiner: everything working together.
    The Guild hall: done.
    Steps. when: the event that shows the step (none = right after the previous one).
@@ -9,16 +9,13 @@
 const TUT=[
   // Gullhaven: items, the crew who work them, and why order matters
   {when:'port',until:'next',text:"Welcome, cartographer. This trial voyage teaches the game one stop at a time."},
-  {until:'bought',target:'#stall',text:"Everything that fights for you is cargo. Tap the Rapier, then Buy."},
-  {until:'next',target:'.dock .board .item',text:"It's faded: nobody aboard can use it yet."},
-  {until:'tavern',target:'[data-bld="tavern"]',pos:'bottom',text:"Crew make cargo work. Open the Tavern."},
-  {when:'tavern',until:'hired',target:'.talk .buy',text:"The Fencing Master has Steel, which works blades. Sign them on."},
-  {when:'hired',until:'next',target:'.dock',text:"Your Rapier is ready, and your new hand joins the crew strip."},
-  {until:'market',target:'[data-bld="market"]',pos:'bottom',skipIf:()=>G.board.length>1,text:"Back to the Market for one more piece."},
-  {when:'market',until:'bought',target:'#stall',skipIf:()=>G.board.length>1,text:"The Jib Sail speeds up the item on its right. Buy it."},
+  {until:'bought',target:'#stall',text:"Ship cargo works on its own. Buy the Jib Sail at the Shipyard."},
+  {until:'armory',target:'[data-st="armory"]',pos:'bottom',text:"Crew cargo needs a hand to wield it. Look in the Armory."},
+  {when:'armory',until:'tavern',target:'[data-bld="tavern"]',pos:'bottom',text:"No Master-at-Arms aboard, no sale. Open the Tavern."},
+  {when:'tavern',until:'hired',target:'.talk .buy',text:"The Master-at-Arms wields crew weapons and shields. Sign them on."},
+  {when:'hired',until:'market',target:'[data-bld="market"]',pos:'bottom',text:"Hands level up as you win. Now back to the Market."},
+  {when:'market',until:'bought',target:'#stall',text:"The Armory will sell to you now. Buy the Rapier."},
   {until:'moved',target:'.dock .board',text:"Order matters. Drag the Jib Sail to the left of the Rapier."},
-  {until:'tavern',target:'[data-bld="tavern"]',pos:'bottom',skipIf:()=>G.crew.some(c=>c.k==='bosun'),text:"The Jib Sail needs Seamanship. Open the Tavern."},
-  {when:'tavern',until:'hired',target:'.talk .buy',skipIf:()=>G.crew.some(c=>c.k==='bosun'),text:"The Bosun has Seamanship. Sign them on."},
   {until:'chart',target:'#leave',text:"Now tap Set sail."},
   // the training hulk: fighting, then renown
   {when:'chart',until:'fight',target:'.node.reach',text:"Tap the training hulk, then Sail here."},
@@ -31,11 +28,11 @@ const TUT=[
   {when:'landmarkOpen',until:'landmark',text:"Landmarks help for the whole voyage. Pick one."},
   {when:'chart',until:'sail',target:'.node.reach',text:"Sail on to Saltmere."},
   // Saltmere: upgrades, selling, fittings
-  {when:'port',until:'bought',target:'#stall',text:"Buy the Rapier here. A matching item upgrades yours."},
+  {when:'port',until:'bought',target:'.stallsec',text:"Open the Armory and buy the Rapier. A matching item upgrades yours."},
   {until:'next',target:'.dock .board',text:"Upgraded! To sell cargo, drag it onto Set sail."},
   {until:'wright',target:'[data-bld="wright"]',pos:'bottom',text:"Fittings change how your ship fights. Open the Shipwright."},
-  {when:'wright',until:'fitted',target:'#stall',text:"Tap a fitting, then fit it. A crew member mans each one."},
-  {when:'fitted',until:'next',target:'#shipbtn',pos:'bottom',text:"Tap your hull to see your ship and who mans each fitting."},
+  {when:'wright',until:'fitted',target:'#stall',text:"Tap a fitting, then fit it. Each one has a trade-off."},
+  {when:'fitted',until:'next',target:'#shipbtn',pos:'bottom',text:"Tap your hull any time to see your ship."},
   {until:'chart',target:'#leave',text:"One test left. Set sail."},
   // the examiner: everything together
   {when:'chart',until:'fight',target:'.node.reach',text:"Sail at the Guild's examiner."},
@@ -57,8 +54,10 @@ function startTutorial(){
     edges:[[900,901],[901,902],[902,903],[903,904],[904,905]]};
   G=Object.assign({},VOYAGE_DEFAULTS,{seed:'TUTORIAL',ship:'sloop',sea:0,map,at:900,path:[900],day:1,gold:25,hull:20,renown:RENOWN[0]-1,
     board:[],charts:[],log:[],creel:[],hock:'tutorial',tut:{i:0,on:false},crew:[],
-    shops:{900:{offers:[{k:'rapier',t:0},{k:'jib',t:0},{k:'swordcane',t:0},{k:'pork',t:0}],tavern:['fencer','bosun','herbalist'],reroll:1,demand:'mackerel'},
-      903:{offers:[{k:'rapier',t:0},{k:'pistols',t:0},{k:'duelglove',t:0},{k:'fenders',t:0}],fits:['ram','studding'],reroll:1,demand:'mackerel'}}});
+    shops:{900:{offers:[{k:'jib',t:0},{k:'sail',t:0},{k:'fenders',t:0},{k:'tar',t:0}],stalls:{armory:[{k:'rapier',t:0},{k:'swordcane',t:0},{k:'dagger',t:0},{k:'pins',t:0}],
+        apoth:[{k:'pork',t:0},{k:'grog',t:0},{k:'lime',t:0},{k:'teapot',t:0}],charms:[{k:'spyglass',t:0},{k:'hook',t:0},{k:'net',t:0},{k:'tailwind',t:0}]},tavern:['atarms','bosun','surgeon'],reroll:1,demand:'mackerel'},
+      903:{offers:[{k:'fenders',t:0},{k:'plating',t:0},{k:'compass',t:0},{k:'tar',t:0}],stalls:{armory:[{k:'rapier',t:0},{k:'pistols',t:0},{k:'duelglove',t:0},{k:'dagger',t:0}],
+        apoth:[{k:'pork',t:0},{k:'lime',t:0},{k:'kelp',t:0},{k:'teapot',t:0}],charms:[{k:'spyglass',t:0},{k:'hook',t:0},{k:'net',t:0},{k:'rum',t:0}]},fits:['ram','studding'],reroll:1,demand:'mackerel'}}});
   updateReveal();lore(LORE.start);port(900);
 }
 /* is a place open? Everywhere in a real voyage; in the trial, only where that stop's lesson is */
@@ -106,7 +105,7 @@ function highlight(target){
   if(!el.closest('.dock')&&!el.closest('#coach')){const r=el.getBoundingClientRect();if(r.top<150||r.bottom>innerHeight-220)el.scrollIntoView({block:'center',behavior:'smooth'})}
 }
 function showStep(ev){
-  const T=G.tut,st=TUT[T.i];T.on=true;
+  const T=G.tut,st=TUT[T.i];T.on=true;T.due=false;
   const text=st.textFor?st.textFor[ev]:st.text,u=[].concat(st.until);
   // closing a step: explanations move on, the last one finishes, and action steps just tuck the tip away until you do the thing
   const onClose=u.includes('finish')?finishTutorial:(u.includes('next')||st.skip)?()=>advance():()=>{const c=document.getElementById('coach');if(c){clearTimeout(c._t);c.remove()}};
@@ -114,8 +113,8 @@ function showStep(ev){
   if(st.pause&&B)B.coachHold=true;
   c.querySelector('[data-c=skip]').onclick=finishTutorial;
 }
-function advance(ev){const T=G.tut;hideCoach();T.i++;while(TUT[T.i]&&TUT[T.i].skipIf&&TUT[T.i].skipIf())T.i++;T.on=false;const nx=TUT[T.i];
-  if(nx&&(!nx.when||(ev&&[].concat(nx.when).includes(ev))))setTimeout(()=>{if(G&&G.tut&&!G.tut.on&&TUT[G.tut.i]===nx)showStep(ev)},320)}
+function advance(ev){const T=G.tut;hideCoach();T.i++;while(TUT[T.i]&&TUT[T.i].skipIf&&TUT[T.i].skipIf())T.i++;T.on=false;T.due=false;const nx=TUT[T.i];
+  if(nx&&(!nx.when||(ev&&[].concat(nx.when).includes(ev)))){T.due=true;setTimeout(()=>{if(G&&G.tut&&!G.tut.on&&TUT[G.tut.i]===nx)showStep(ev)},320)}}
 /* the game reports what just happened */
 function coach(ev){
   if(!G||!G.tut)return;const T=G.tut,st=TUT[T.i];if(!st)return;
@@ -123,7 +122,9 @@ function coach(ev){
     if([].concat(st.until).includes(ev))return advance(ev);
     if(st.target)setTimeout(()=>highlight(st.target),30);   // screen redrew: put the highlight back
     return}
+  // the step is due but its bubble hasn't shown yet, and the player already did what it asks (a quick tap): move on
+  if(T.due&&[].concat(st.until).includes(ev))return advance(ev);
   const w=st.when?[].concat(st.when):null;
-  if(!w||w.includes(ev))setTimeout(()=>{if(G&&G.tut&&!G.tut.on&&TUT[G.tut.i]===st)showStep(ev)},st.when?260:0);
+  if(!w||w.includes(ev)){T.due=true;setTimeout(()=>{if(G&&G.tut&&!G.tut.on&&TUT[G.tut.i]===st)showStep(ev)},st.when?260:0)}
 }
 /* Ansel only speaks during the maiden voyage: real voyages have no tips. (A.tips and A.tipsOff stay in old saves, unused.) */

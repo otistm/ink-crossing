@@ -8,9 +8,10 @@ const BLD={market:'Market',tavern:'Tavern',wright:'Shipwright',docks:'Docks'};
 function port(id,view){
   cancelAnimationFrame(raf);B=null;G.inPort=true;
   const n=node(id);
-  if(!G.shops[id]){const r=RNG(G.seed,'shop',id,G.shopVisit||0),sk=sellerOf(id);G.shops[id]={seller:sk,offers:Array.from({length:4},(_,i)=>stallItem(r,depthOf(n),sk,i)),reroll:1};
-    // the first port of a voyage stocks your ship's own gear and hands, so a bare ship can always be outfitted for its style
-    if(!G.tut&&G.sea===0&&id===G.map.start&&G.path.length===1){const sh=SHIPS[G.ship];sh.start.forEach((x,i)=>G.shops[id].offers[i]={k:x.k,t:x.t});
+  if(!G.shops[id]){const r=RNG(G.seed,'shop',id,G.shopVisit||0),sk=sellerOf(id);G.shops[id]={seller:sk,offers:Array.from({length:4},()=>stockFor(r,depthOf(n),'yard')),stalls:mkStalls(id,depthOf(n)),reroll:1};
+    // the first port of a voyage stocks your ship's own gear and hands, so a bare ship can always be outfitted for its style:
+    // each piece on the stall that sells its class
+    if(!G.tut&&G.sea===0&&id===G.map.start&&G.path.length===1){const sh=SHIPS[G.ship],at={};sh.start.forEach(x=>{const st=Object.keys(STALLS).find(k=>STALLS[k].ok(x.k)),L=st==='yard'?G.shops[id].offers:G.shops[id].stalls[st];at[st]=at[st]||0;L[at[st]++]={k:x.k,t:x.t}});
       const pool=Object.keys(CREW).filter(k=>!(sh.crew||[]).includes(k));G.shops[id].tavern=(sh.crew||[]).concat(pool[ri(r,pool.length)])}
     fresh=true;G.freeRoll=true;logL(`Docked at ${n.name}.`);
     const pool=Object.keys(FISH).filter(k=>FISH[k].sea===G.sea);G.shops[id].demand=pool[ri(r,pool.length)];
@@ -18,53 +19,56 @@ function port(id,view){
     if(G.quest==='letter'){G.quest=null;G.gold+=15;bump='gold';logL(`Delivered Wet Jack's letter at ${n.name}. His girl cried, then paid me 15 gold.`);msg.push('Delivered the letter: +15 gold')}
     const wg=payWages();if(wg)msg.push(wg);
     if(msg.length)setTimeout(()=>toast(msg.join('. ')),250)}
-  const S=G.shops[id];
-  if(view==null)view=PV.id===id?PV.view:(G.tut?'market':'harbour');PV={id,view,hx:PV.id===id?PV.hx:null,scroll:PV.id===id?PV.scroll:null,tsel:PV.id===id?PV.tsel:null,msel:PV.id===id?PV.msel:null,mbought:PV.id===id?PV.mbought:false,wsel:PV.id===id?PV.wsel:null,dsel:PV.id===id?PV.dsel:null,dsold:PV.id===id?PV.dsold:false};
+  const S=G.shops[id];if(!S.stalls)S.stalls=mkStalls(id,depthOf(n));
+  if(view==null)view=PV.id===id?PV.view:(G.tut?'market':'harbour');PV={id,view,hx:PV.id===id?PV.hx:null,scroll:PV.id===id?PV.scroll:null,tsel:PV.id===id?PV.tsel:null,msel:PV.id===id?PV.msel:null,mbought:PV.id===id?PV.mbought:false,wsel:PV.id===id?PV.wsel:null,dsel:PV.id===id?PV.dsel:null,dsold:PV.id===id?PV.dsold:false,stall:PV.id===id?PV.stall:null};
+  if(!PV.stall)PV.stall='yard';const st=PV.stall,OF=st==='yard'?S.offers:S.stalls[st],open=stallOpen(st);
   if(G.sel==null)G.moving=false;
   const anim=fresh;fresh=false;
   const vis=!G.hock&&n.row===0&&G.sea<=1?'hock':n.visitor;
   if(G.tut&&id!==900)n.visitor=null;
-  const ups=new Set();S.offers.forEach(o=>{if(!o)return;const j=matchIdx(o);if(j>=0)ups.add(j)});
+  const ups=new Set();OF.forEach(o=>{if(!o)return;const j=matchIdx(o);if(j>=0)ups.add(j)});
   // the shipwright's two fittings for this visit, seeded like the first market offers
   if(!G.tut&&!S.fits){const r=RNG(G.seed,'wright',id,G.shopVisit||0),pool=Object.keys(FITTINGS).filter(k=>!hasF(k));S.fits=[];
     // the wright's own speciality goes on the bench first
     const mine=pool.filter(k=>FITTINGS[k].spot===WRIGHTS[wrightOf(id)].spot);if(mine.length){const k=mine[ri(r,mine.length)];S.fits.push(k);pool.splice(pool.indexOf(k),1)}
     while(S.fits.length<(hasP('wright')?3:2)&&pool.length)S.fits.push(pool.splice(ri(r,pool.length),1)[0])}
-  const rr=S.reroll+(fitDown('lion')?1:0);
+  // the Quartermaster's Smuggler's Charm: the first reroll each day is a gold cheaper
+  const qmOff=crewHas('smuggle')&&G.qmDay!==G.day?1:0,rr=Math.max(0,S.reroll+(fitDown('lion')?1:0)-qmOff);
   // the tavern's hires for this visit, seeded like the market
   if(!G.tut&&!S.tavern){const r=RNG(G.seed,'tavern',id,G.shopVisit||0),pool=Object.keys(CREW).filter(k=>!(G.crew||[]).some(c=>c.k===k));S.tavern=[];
     while(S.tavern.length<(hasP('recruiter')?4:3)&&pool.length)S.tavern.push(pool.splice(ri(r,pool.length),1)[0])}
-  const marketH=stallHTML(S,id,anim);
+  const marketH=stallHTML(S,id,anim,st,OF,open,rr);
   const info=harbourInfo(S,vis);
   const page=view==='harbour'?`${harbourScene(info)}<p class="tapnote">Tap a place to go in. Swipe or use the arrows to walk along the quay.</p>`
     :`<nav class="bldnav" aria-label="Port">${Object.entries(BLD).map(([k,t])=>`<button class="bldtab${k===view?' on':''}" data-bld="${k}"${k===view?' aria-current="page"':''}>${t}${info[k].badge?`<span class="bdg">${info[k].badge}</span>`:''}</button>`).join('')}<button class="bldtab home" data-bld="harbour"><svg class="hic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>Harbour</button></nav>
       ${view==='market'?marketH:view==='tavern'?(tutOpen('tavern')?tavernHTML(S):'<p class="soft">The tavern is closed for the trial.</p>'):view==='wright'?(tutOpen('wright')?wrightHTML(S,id,anim):'<p class="soft">The shipwright is closed for the trial.</p>'):docksHTML(S,id,vis,anim)}`;
   app.innerHTML=`${barHTML()}<div class="seahead"><h2>${n.name}</h2><button class="scope" id="scope" aria-label="Look at the chart"><svg viewBox="0 0 24 16" aria-hidden="true"><path d="M2 9.5l13-5 1.6 4.2-13 5z"/><path d="M16.4 4l4.2-1.6 1.6 4.2-4.2 1.6"/><path d="M8 12.5l-2 3M10 11.7l2 3.8"/></svg>Chart</button><span>${SEAS[G.sea]}</span></div>
   ${page}
-  ${holdDock(`<button class="primary" id="leave">Set sail</button>`,ups,lockerUps(S.offers),view==='market'?'Drag goods off the table into your hold to buy.':undefined)}`;
+  ${holdDock(`<button class="primary" id="leave">Set sail</button>`,ups,lockerUps(OF),view==='market'&&open?'Drag goods off the table into your hold to buy.':undefined)}`;
   // the market's goods drag straight off the table into the hold or locker, paying as they land
-  const buyInto=(i,tgt,dst)=>{const o=S.offers[i],p=buyP(o);if(G.gold<p){toast(`Need ${p-G.gold} more gold`);return null}
+  const buyInto=(i,tgt,dst)=>{const o=OF[i],p=buyP(o);if(G.gold<p){toast(`Need ${p-G.gold} more gold`);return null}
     let at=null;if(findMatch(o)){const m=findMatch(o);addItem(o);toast(`${DEFS[o.k].n} upgraded to ${TIER[m.list[m.i].t]}`)}else{const b={k:o.k,t:o.t};tgt.list.splice(dst,0,b);seen(o.k);flash={ref:b,kind:'add'};at=dst}
-    G.gold-=p;S.offers[i]=null;PV.msel=null;PV.mbought=true;bump='gold';save();setTimeout(()=>coach('bought'));return at};
-  bindBar();bindHold('port',()=>port(id,view),view==='market'?{from:[...app.querySelectorAll('.good[data-g]')].map(el=>({el,it:S.offers[+el.dataset.g],drop:(tgt,dst)=>buyInto(+el.dataset.g,tgt,dst)}))}:null);fitDock();
+    G.gold-=p;OF[i]=null;PV.msel=null;PV.mbought=true;bump='gold';save();setTimeout(()=>coach('bought'));return at};
+  bindBar();bindHold('port',()=>port(id,view),view==='market'&&open?{from:[...app.querySelectorAll('.good[data-g]')].map(el=>({el,it:OF[+el.dataset.g],drop:(tgt,dst)=>buyInto(+el.dataset.g,tgt,dst)}))}:null);fitDock();
   const rb=document.getElementById('reroll');if(rb)rb.onclick=()=>{
     if(hasC('route')&&G.freeRoll){G.freeRoll=false}
-    else{if(G.gold<rr)return toast(`Need ${rr-G.gold} more gold`);G.gold-=rr;S.reroll++;bump='gold'}
-    S.offers=Array.from({length:4},(_,i)=>stallItem(Math.random,depthOf(n),sellerOf(id),i));PV.msel=null;save();
+    else{if(G.gold<rr)return toast(`Need ${rr-G.gold} more gold`);G.gold-=rr;S.reroll++;if(qmOff)G.qmDay=G.day;bump='gold'}
+    const fresh4=Array.from({length:4},()=>stockFor(Math.random,depthOf(n),st));if(st==='yard')S.offers=fresh4;else S.stalls[st]=fresh4;PV.msel=null;save();
     // the seller sweeps the old goods off the table and ducks under it, then thumps the new ones down one by one
     const st=app.querySelector('#stall');if(!st||matchMedia('(prefers-reduced-motion:reduce)').matches){fresh=true;return port(id,view)}
     rb.disabled=true;st.classList.add('sweeping');setTimeout(()=>{restock=true;port(id,view)},520)};
-  app.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>itemSheet([S.offers[+b.dataset.v]],0,'view',()=>{}));
-  app.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const i=+b.dataset.b,o=S.offers[i],p=buyP(o);
+  app.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>itemSheet([OF[+b.dataset.v]],0,'view',()=>{}));
+  app.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{if(b.dataset.st===PV.stall)return;PV.stall=b.dataset.st;PV.msel=null;PV.mbought=false;fresh=true;port(id,view);coach(b.dataset.st)});
+  app.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const i=+b.dataset.b,o=OF[i],p=buyP(o);
     if(G.gold<p)return toast(`Need ${p-G.gold} more gold`);
     const m=findMatch(o),r=addItem(o);if(!r)return toast(`No room for size ${DEFS[o.k].s}${G.locker?' in your hold or locker':''}. Sell something first.`);
     if(r==='up')toast(`${DEFS[o.k].n} upgraded to ${TIER[m.list[m.i].t]}`);
     if(r==='locker')toast(`Hold full. Stowed the ${DEFS[o.k].n} in your locker.`);
-    G.gold-=p;S.offers[i]=null;PV.msel=null;PV.mbought=true;bump='gold';save();port(id,view);coach('bought')});
+    G.gold-=p;OF[i]=null;PV.msel=null;PV.mbought=true;bump='gold';save();port(id,view);coach('bought')});
   app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{if(dragJustEnded)return;const i=+b.dataset.g;if(b.classList.contains('sel'))return;PV.msel=i;PV.mbought=false;port(id,view)});
   document.getElementById('leave').onclick=()=>{G.moving=false;G.sel=null;if(G.tut&&G.tut.i>=TUT.length-1)return finishTutorial();
-    const bare=!G.tut&&(!G.board.length||!(G.crew||[]).length);if(!bare)return chart();
-    const ov=overlay(`<h2>Sail like this?</h2><p>${!G.board.length&&!(G.crew||[]).length?'Your hold is empty and nobody is aboard.':!G.board.length?'Your hold is empty. Nothing will fire in a fight.':'Nobody is aboard to work your cargo, so none of it will fire in a fight.'}</p>
+    const cr=crewCrafts(),bare=!G.tut&&(!G.board.length||G.board.every(it=>!wields(it.k,cr)));if(!bare)return chart();
+    const ov=overlay(`<h2>Sail like this?</h2><p>${!G.board.length?'Your hold is empty. Nothing will fire in a fight.':'Nobody aboard can wield your crew cargo, so none of it will fire in a fight.'}</p>
       <div class="sh-actions"><button class="ghost" data-a="stay">Stay in port</button><button class="primary" data-a="go">Set sail</button></div>`,true);
     ov.addEventListener('click',e=>{if(e.target===ov){ov.remove();return}const a=e.target.closest('[data-a]');if(!a)return;ov.remove();if(a.dataset.a==='go')chart()})};
   const vb=document.getElementById('visitor');if(vb)vb.onclick=()=>talk(vis,id+'v',()=>port(id,view),()=>{S.talked=true});
@@ -75,7 +79,7 @@ function port(id,view){
     if(G.gold<f.p)return toast(`Need ${f.p-G.gold} more gold`);
     if(!canEquip(k))return toast('Double Planking boards up a slot. Sell something to make room first.');
     const from=(app.querySelector(`.fitgood[data-w="${i}"] .o-icon`)||b).getBoundingClientRect(),old=fitIn(f.spot);
-    G.gold-=f.p;const back=equip(k);S.fits[i]=null;PV.wsel=null;bump='gold';save();{const h=handAt(f.spot);toast(`Fitted ${f.n}${back?`. Sold the old one for ${back} gold`:''}. ${h?`${CREW[h.k].n} mans it`:'Post a hand at it on your ship card'}`)}port(id,view);fitFly(k,from,old);setTimeout(()=>coach('fitted'),G.tut?2600:0)});
+    G.gold-=f.p;const back=equip(k);S.fits[i]=null;PV.wsel=null;bump='gold';save();toast(`Fitted ${f.n}${back?`. Sold the old one for ${back} gold`:''}`);port(id,view);fitFly(k,from,old);setTimeout(()=>coach('fitted'),G.tut?2600:0)});
   app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const n=b.dataset.r==='all'?repairable():1;
     if(n<1||G.gold<n*repairCost())return toast(G.hull>=HULL_MAX?'The hull is already sound.':`Need ${n*repairCost()-G.gold} more gold`);
     const was=G.hull;G.gold-=n*repairCost();G.hull+=n;bump='hull';logL(`Paid the shipwright ${n*repairCost()} gold to repair ${n} hull.`);save();port(id,view);repairFx(was,G.hull)});
@@ -105,11 +109,12 @@ function port(id,view){
    out on the table below; tap one and it lifts while the seller tells you about it, with the Buy button. */
 /* the market just restocked (Show me more): the new goods thump down onto the table instead of popping in */
 let restock=false;
-function stallHTML(S,id,anim){const sk=sellerOf(id),P=SELLERS[sk],rr=S.reroll+(fitDown('lion')?1:0);
-  let sel=PV.msel;if(sel==null||!S.offers[sel])sel=PV.mbought?-1:S.offers.findIndex(Boolean);
-  const o=sel>=0?S.offers[sel]:null;
-  const goods=S.offers.map((g,i)=>{if(!g)return`<span class="good gone" aria-label="Sold"><span class="o-icon"></span><span class="ptag">sold</span></span>`;
+function stallHTML(S,id,anim,st,OF,open,rr){const sk=stallKeeper(st,id),P=SELLERS[sk],T=STALLS[st];
+  let sel=open?PV.msel:-1;if(open&&(sel==null||!OF[sel]))sel=PV.mbought?-1:OF.findIndex(Boolean);
+  const o=sel>=0?OF[sel]:null;
+  const goods=OF.map((g,i)=>{if(!g)return`<span class="good gone" aria-label="Sold"><span class="o-icon"></span><span class="ptag">sold</span></span>`;
     const d=DEFS[g.k],up=!!findMatch(g);
+    if(!open)return`<span class="good shut" aria-label="${d.n}, not for sale to you"><span class="o-icon t${g.t} c-${kindOf(g.k)}">${emb(g.k)}${icon(g.k)}</span><span class="ptag">${sicon('gold')}${buyP(g)}</span></span>`;
     return`<button class="good${i===sel?' sel':''}${restock?' thump':anim?' in':''}" data-g="${i}" style="animation-delay:${restock?120+i*130:i*70}ms" aria-label="${d.n}, ${TIER[g.t]}, ${buyP(g)} gold${i===sel?', selected':''}"><span class="o-icon t${g.t} c-${kindOf(g.k)}">${emb(g.k)}${icon(g.k)}${up?CHEV:''}</span><span class="ptag">${sicon('gold')}${buyP(g)}</span></button>`}).join('');
   let talk;
   if(o){const d=DEFS[o.k],p=buyP(o),up=!!findMatch(o),poor=G.gold<p;
@@ -117,7 +122,8 @@ function stallHTML(S,id,anim){const sk=sellerOf(id),P=SELLERS[sk],rr=S.reroll+(f
       <p class="who"><b>${d.n}</b><span class="chipc">${TIER[o.t]}</span><span class="chipc">size ${d.s}</span>${d.cd?`<span class="chipc">${d.cd}s</span>`:''}</p>
       ${up&&upgradeHTML(o)||`<p class="desc">${describe([o],0).L.join(' ')}</p>`}
       <button class="buy${up?' up':''}" data-b="${sel}" ${poor?'aria-disabled="true"':''}>${up?'Upgrade':'Buy'} for ${p} gold</button></div>`}
-  else if(PV.mbought&&S.offers.some(Boolean))talk=`<div class="talk" id="talk"><p class="say">“Pleasure doing business.”</p><p class="desc">Tap anything on the table to hear about it.</p></div>`;
+  else if(!open)talk=`<div class="talk" id="talk"><p class="say">“${P.refuse}”</p><p class="desc">Sign on ${an(CREW[T.need].n)} at the tavern and ${P.short} will sell to you.</p><button class="buy" data-bld="tavern">Go to the tavern</button></div>`;
+  else if(PV.mbought&&OF.some(Boolean))talk=`<div class="talk" id="talk"><p class="say">“Pleasure doing business.”</p><p class="desc">Tap anything on the table to hear about it.</p></div>`;
   else talk=`<p class="talk quiet" id="talk">“${P.out}”</p>`;
   // the back wall: two shelves of crates, sacks, jars and barrels, drawn as tiles so it fills any width
   const shelf=`<pattern id="stock" width="132" height="58" patternUnits="userSpaceOnUse"><g fill="#FBF5E8" stroke="#000" stroke-width="2" stroke-linejoin="round">
@@ -125,16 +131,17 @@ function stallHTML(S,id,anim){const sk=sellerOf(id),P=SELLERS[sk],rr=S.reroll+(f
       <path d="M44 54q-6-14 2-26q6-6 12 0q8 12 2 26z" fill="#E9CF8E"/><path d="M47 30q5 3 10 0" fill="none"/>
       <rect x="70" y="34" width="14" height="20" rx="3" fill="#B4C6CE"/><rect x="73" y="28" width="8" height="6" fill="#B98E64"/>
       <path d="M92 54q-3-14 0-28h22q3 14 0 28z" fill="#B98E64"/><path d="M103 26h11q3 14 0 28h-11z" fill="#9A7350" stroke="none"/><path d="M92 54q-3-14 0-28h22q3 14 0 28z" fill="none"/><path d="M91 34h24M91 46h24" fill="none"/></g></pattern>`;
-  return`<section class="stallsec">
-    <div class="stall" id="stall">
+  const tabs=`<div class="stalltabs" role="tablist">${Object.entries(STALLS).map(([k,X])=>`<button class="sttab${k===st?' on':''}${stallOpen(k)?'':' shut'}" data-st="${k}" role="tab" aria-selected="${k===st}">${X.n}${stallOpen(k)?'':'<svg class="lk" viewBox="0 0 12 12" aria-label="closed to you"><rect x="2.5" y="5.5" width="7" height="5" rx="1"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none"/></svg>'}</button>`).join('')}</div>`;
+  return`<section class="stallsec">${tabs}
+    <div class="stall${open?'':' closed'}" id="stall">
       <svg class="stallwall" aria-hidden="true"><defs>${shelf}<pattern id="awn" width="44" height="34" patternUnits="userSpaceOnUse"><path d="M0 0h22v22q-11 12-22 0z" fill="#B5533C" stroke="#000" stroke-width="2"/><path d="M22 0h22v22q-11 12-22 0z" fill="#FBF5E8" stroke="#000" stroke-width="2"/></pattern></defs>
         <rect x="0" y="62" width="100%" height="58" fill="url(#stock)"/><path d="M0 120.5H4000" stroke="#000" stroke-width="3"/>
         <rect x="0" y="138" width="100%" height="58" fill="url(#stock)" transform="translate(-60 0)"/><path d="M0 196.5H4000" stroke="#000" stroke-width="3"/>
         <rect x="0" y="0" width="100%" height="34" fill="url(#awn)"/><path d="M0 1.5H4000" stroke="#000" stroke-width="3"/></svg>
       <h2 class="stallsign">${P.short}'s</h2>
-      <button class="ghost more" id="reroll">Show me more<span class="cost">${hasC('route')&&G.freeRoll?'free':`${sicon('gold')}${rr}`}</span></button>
+      <button class="ghost more" id="reroll"${open?'':' hidden'}>Show me more<span class="cost">${hasC('route')&&G.freeRoll?'free':`${sicon('gold')}${rr}`}</span></button>
       <div class="stalltop"><div class="seller" aria-label="${P.n}, the seller">${peep(P.look,'40 22 172 150')}</div>${talk}</div>
-      <div class="table"><div class="goods" id="goods">${goods}</div></div>
+      <div class="table">${open?'':'<span class="shutsign">Closed to you</span>'}<div class="goods" id="goods">${goods}</div></div>
     </div>
   </section>`}
 /* fit the stall to the room, down to the hold */
@@ -206,7 +213,7 @@ function repairFx(before,after){document.querySelectorAll('.hullcard').forEach(c
    off if there was one), three hammer blows ring out in ink sparks, and "Fitted!" rises. Tap to hurry it. */
 function fitFly(k,from,old){if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
   const F=FITTINGS[k],fx=document.createElement('div');fx.className='fitfx';
-  fx.innerHTML=`<div class="ff-ship">${shipArt(G.ship,'ff-art')}</div><p class="ff-cap"><b>${F.n}</b> fitted to the ${SPOTS[F.spot].toLowerCase()}${handAt(F.spot)?`<br>${CREW[handAt(F.spot).k].n} mans it`:''}</p>`;
+  fx.innerHTML=`<div class="ff-ship">${shipArt(G.ship,'ff-art')}</div><p class="ff-cap"><b>${F.n}</b> fitted to the ${SPOTS[F.spot].toLowerCase()}</p>`;
   document.body.appendChild(fx);
   const close=()=>{if(!fx.isConnected)return;fx.classList.add('gone');setTimeout(()=>fx.remove(),450)};
   fx.addEventListener('click',close);
@@ -243,11 +250,10 @@ function hireFly(k,from){const strip=app.querySelectorAll('#crewbar .cb-c:not(.e
 /* the tavern: everyone looking for work sits at the bar. Tap one to have a word; they make their pitch below. */
 /* the tavern: the bar scene fills the room. Everyone looking for work sits at the counter; tap one and a speech bubble
    floats over the scene just under them, pointing up, with their pitch and a Hire button. layBar() fits it all to the space. */
-/* the stations a hand mans with no downside (fittings of their crafts). Ones on your ship come first, marked, with a nudge if nobody mans them. */
-function mansHTML(k){const fs=Object.keys(FITTINGS).filter(f=>CREW[k].crafts.includes(FITTINGS[f].craft)).sort((x,y)=>hasF(y)-hasF(x));
-  const idle=fs.filter(f=>hasF(f)&&!handAt(FITTINGS[f].spot)),open=fs.filter(f=>hasF(f)&&handAt(FITTINGS[f].spot)&&!skilled(handAt(FITTINGS[f].spot),f));
-  return`<div class="mans"><span class="mans-l">Mans with no downside</span><span class="mans-fits">${fs.map(f=>`<span class="mfit${hasF(f)?' have':''}">${fitGlyph(f)}${FITTINGS[f].n}</span>`).join('')}</span>
-    ${idle.length?`<span class="mans-tip">Nobody mans your ${idle.map(f=>FITTINGS[f].n).join(' or ')}. They would.</span>`:open.length?`<span class="mans-tip">Would take the downside off your ${open.map(f=>FITTINGS[f].n).join(' and ')}.</span>`:''}</div>`}
+/* what a hand would do for you: the perk they bring, and which of your crew cargo they'd bring to life */
+function roleHTML(k){const C=CREW[k],P=CREWPERK[C.perk],mine=G.board.concat(G.locker||[]).filter(it=>isCrewItem(it.k)&&C.crafts.includes(clsOf(it.k).cls)),cr=crewCrafts();
+  const dead=mine.filter(it=>!wields(it.k,cr)),names=[...new Set(dead.map(it=>DEFS[it.k].n))];
+  return`<p class="perkline"><b>${P.n}.</b> ${P.d}</p>${names.length?`<p class="mans-tip">Would wield your ${names.join(', ')}.</p>`:''}`}
 function tavernHTML(S){const full=(G.crew||[]).length>=berths(),n=S.tavern.length;
   let sel=PV.tsel;if(sel==null||!S.tavern[sel])sel=S.tavern.findIndex(Boolean);
   // the hands sit in 0..PW; the room runs on far past them on every side, so the scene can fill any shape
@@ -275,9 +281,9 @@ function tavernHTML(S){const full=(G.crew||[]).length>=berths(),n=S.tavern.lengt
     </svg>
     ${C?`<div class="talk" id="talk"><p class="say">“${C.say||'Looking for a berth, captain.'}”</p>
       <p class="who"><b>${C.n}</b> ${crewCrafts1(k)}</p>
-      <p class="terms">Lets your cargo use ${C.crafts.map(c=>`<b>${CRAFTS[c]}</b>`).join(' and ')}. Wage ${wageOf(k)} gold a port.</p>
-      ${mansHTML(k)}
-      <details class="ranks"><summary>How they grow</summary>${[2,3].map(r=>`<p><b>Rank ${r}</b>, after ${rankXP()[r-1]} wins: ${C.crafts.map(c=>RANKS[c][r-2]).join(' ')}</p>`).join('')}</details>
+      <p class="terms">Masters ${C.crafts.map(c=>`<b>${CRAFTS[c].toLowerCase()}</b>`).join(' and ')}${C.crafts.some(c=>c[0]==='c')?', so your crew can wield them':''}. Wage ${wageOf(k)} gold a port.</p>
+      ${roleHTML(k)}
+      <details class="ranks"><summary>How they grow</summary><p>A level after ${rankXP().slice(1).join(', ')} wins. Every level lets you raise one of your ${C.crafts.map(c=>CRAFTS[c].toLowerCase()).join(' or ')} items a tier.</p></details>
       <button class="buy" data-hire="${sel}" ${full||G.gold<feeOf(k)?'aria-disabled="true"':''}>${full?'Your deck is full':feeOf(k)?`Hire for ${feeOf(k)} gold`:'Sign on, the Guild pays'}</button></div>`
       :'<p class="talk quiet">Everyone here has signed on. The bar is quiet.</p>'}
     </div>
@@ -315,13 +321,14 @@ const buyP=o=>Math.max(1,price(o.k,o.t)-(hasP('haggler')?1:0));
 /* what each building has for you right now: a badge and a few words for screen readers */
 /* in the market, the good you've chosen glows what it would touch in your hold */
 function restoreFocusMarks(){const S=G&&PV.id!=null&&G.shops[PV.id];if(!S||PV.view!=='market'||!app.querySelector('#stall'))return;
-  const i=PV.msel!=null&&S.offers[PV.msel]?PV.msel:PV.mbought?-1:S.offers.findIndex(Boolean),o=i>=0?S.offers[i]:null;if(!o)return clearMarks();
+  const L=PV.stall&&PV.stall!=='yard'&&S.stalls?S.stalls[PV.stall]:S.offers;if(PV.stall&&!stallOpen(PV.stall))return clearMarks();
+  const i=PV.msel!=null&&L[PV.msel]?PV.msel:PV.mbought?-1:L.findIndex(Boolean),o=i>=0?L[i]:null;if(!o)return clearMarks();
   markHold(affectsFrom(o,G.board),null)}
 /* the telescope: the chart from the quay, to look ahead while you shop. Nothing on it can be tapped. */
 function chartPeek(){const ov=overlay(`<div class="peekhead"><h2>${G.tut?'The maiden voyage':SEAS[G.sea]}</h2><span class="soft">From ${node(G.at).name}</span></div><div class="peekwrap" id="peekwrap"><div class="map peek">${mapSVG()}</div></div><button class="primary" data-a="close">Back to port</button>`,false,'peekov');
   ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-a]'))ov.remove()});
   const cur=ov.querySelector('.boatbob'),sh=ov.querySelector('#peekwrap');if(cur&&sh){const r=cur.getBoundingClientRect(),s=sh.getBoundingClientRect();sh.scrollTop=Math.max(0,r.top-s.top-s.height*.45)}}
-function harbourInfo(S,vis){const n=S.offers.filter(Boolean).length,h=(S.tavern||[]).filter(Boolean).length,f=(S.fits||[]).filter(Boolean).length,hurt=G.hull<HULL_MAX,
+function harbourInfo(S,vis){const n=S.offers.filter(Boolean).length+Object.keys(S.stalls||{}).filter(stallOpen).reduce((a,k)=>a+S.stalls[k].filter(Boolean).length,0),h=(S.tavern||[]).filter(Boolean).length,f=(S.fits||[]).filter(Boolean).length,hurt=G.hull<HULL_MAX,
   who=(vis&&!S.talked)||G.hock==='active';
   return{market:{badge:n||'',say:`${n} for sale`,n},tavern:{badge:!tutOpen('tavern')?'':h||'',say:!tutOpen('tavern')?'closed':`${h} for hire`,h:!tutOpen('tavern')?0:h},
     wright:{badge:!tutOpen('wright')?'':hurt?'!':f||'',say:!tutOpen('wright')?'closed':`${f} fittings${hurt?', hull needs repair':''}`,f:!tutOpen('wright')?0:f},
@@ -346,7 +353,7 @@ function wrightHTML(S,id,anim){const wk=wrightOf(id),W=WRIGHTS[wk],all=repairabl
   else{const k=S.fits[sel],f=FITTINGS[k],old=fitIn(f.spot),ok=canEquip(k),poor=G.gold<f.p;
     talk=`<div class="talk" id="talk"><p class="say">“${!ok?W.slot:poor?W.broke:W.say[f.spot]}”</p>
       <p class="who"><b>${f.n}</b><span class="chipc">${SPOTS[f.spot]}</span>${f.hp?`<span class="chipc">${f.hp>0?'+':'−'}${Math.abs(f.hp)} health</span>`:''}</p>
-      <p class="desc">${fitDesc(k)}${old?` <span class="soft">Replaces your ${FITTINGS[old].n}, which sells for ${Math.floor(FITTINGS[old].p/2)}.</span>`:''}${fitCraftLine(k)}</p>
+      <p class="desc">${fitDesc(k)}${old?` <span class="soft">Replaces your ${FITTINGS[old].n}, which sells for ${Math.floor(FITTINGS[old].p/2)}.</span>`:''}</p>
       <button class="buy" data-fit="${sel}" ${poor||!ok?'aria-disabled="true"':''}>Fit for ${f.p} gold</button></div>`}
   // the back wall: a pegboard of saws, mallets, coiled rope and planks, tiled so it fills any width
   const tools=`<pattern id="tools" width="150" height="70" patternUnits="userSpaceOnUse"><g fill="#FBF5E8" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">

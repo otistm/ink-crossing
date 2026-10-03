@@ -101,7 +101,7 @@ function itemSheet(list,i,mode,after){
     <ul>${L.map(l=>`<li>${l}</li>`).join('')}</ul>
     ${g.length?`<div class="gloss">${g.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
     ${(()=>{const a=[...affects(list,i)].map(j=>DEFS[list[j].k].n);return a.length?`<p class="gloss">Works on: ${[...new Set(a)].join(', ')}.</p>`:''})()}
-    ${!list.enemy&&itemUse(it.k,crewCrafts())!=='all'?'<p class="gloss">Unticked abilities need someone aboard with that craft. Hire crew at a port tavern.</p>':''}
+    ${!list.enemy&&itemUse(it.k,crewCrafts())!=='all'?'<p class="gloss">Crew cargo needs a hand who masters it. Hire one at a port tavern. Ship cargo works on its own.</p>':''}
     ${mode!=='view'&&it.t<3?`<p class="gloss">Get another ${d.n}, ${TIER[it.t]} or better, to upgrade it to ${TIER[it.t+1]}.</p>`:''}
     <div class="sh-actions">${mode!=='view'&&!inL?`<button class="ghost" data-a="move">Move</button>`:''}${canSwap?`<button class="ghost" data-a="swap" ${swapOk?'':'disabled'}>${inL?'Move to hold':'Stow in locker'}</button>`:''}${mode==='port'||mode==='spoils'?`<button class="ghost" data-a="sell">Sell for ${sellP(it.k,it.t)} gold</button>`:''}<button class="primary" data-a="close">Close</button></div>`);
   ov.addEventListener('click',e=>{
@@ -138,33 +138,27 @@ const CRAFTG={steel:'<path d="M3 13L12 4"/><path d="M10 3h3v3"/><path d="M4 10l2
   fire:'<path class="w" d="M8 14c-3 0-4.5-2-4.5-4.5C3.5 6.5 7 5.5 7 2c3 2 5.5 4.5 5.5 7.5S11 14 8 14z"/>',alch:'<path class="w" d="M6 2h4M7 2v4l-4 7.5h10L9 6V2"/>',
   med:'<path class="w" d="M6 2.5h4v3.5h3.5v4H10v3.5H6V10H2.5V6H6z"/>',carp:'<path class="w" d="M5 2.5h8v4H5z"/><path d="M7.5 6.5L3 14"/>',
   sea:'<circle cx="8" cy="3.5" r="1.6"/><path d="M8 5v9M5 8h6M3 10.5c1 2.5 3 3.5 5 3.5s4-1 5-3.5"/>'};
+/* the item classes' icons, for crew chips and item cards */
+Object.assign(CRAFTG,{cw:CRAFTG.steel,sw:CRAFTG.gun,cs:'<path class="w" d="M8 1.8l5.2 2v4.3c0 3-2.2 5-5.2 6.1-3-1.1-5.2-3.1-5.2-6.1V3.8z"/>',
+  ss:'<path class="w" d="M8 1.8l5.2 2v4.3c0 3-2.2 5-5.2 6.1-3-1.1-5.2-3.1-5.2-6.1V3.8z"/><path d="M3.4 8h9.2"/>',ch:CRAFTG.med,
+  sh:'<path class="w" d="M2 9.5h12l-2 4H4z"/><path class="w" d="M6.5 2.5h3v2h2v3h-2v1h-3v-1h-2v-3h2z"/>',
+  cx:'<path class="w" d="M9.5 1.5L4 9h3.6l-1.1 5.5L12 7H8.4z"/>',sx:'<path d="M5 1.5v13"/><path class="w" d="M6 2.5c4.5 1.5 6.5 5 6.5 9.5H6z"/>'});
 const craftIcon=c=>`<svg class="cri" viewBox="0 0 16 16" aria-hidden="true">${CRAFTG[c]}</svg>`;
 const crewCrafts1=k=>CREW[k].crafts.map(c=>`<span class="chipc">${craftIcon(c)}${CRAFTS[c]}</span>`).join('');
 const pips=(n,max,cls)=>`<span class="${cls}" aria-label="${n} of ${max}">${Array.from({length:max},(_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}</span>`;
 function crewRows(edit){const cs=G.crew||[];
   return cs.map((c,i)=>{const C=CREW[c.k],rk=crewRank(c),nx=rankXP()[rk];
     return`<div class="crewrow"><span class="o-icon crewic">${crewFace(c.k)}</span><div><b>${C.n}</b>${crewCrafts1(c.k)}${postLine(c)}
-      <span class="soft">Rank ${rk}${nx!=null?`, ${nx-c.xp} more win${nx-c.xp===1?'':'s'} to rank ${rk+1}`:''}. Wage ${wageOf(c.k)}. Morale ${pips(c.m,3,'mor')}</span></div>
+      <span class="soft">Level ${rk}${nx!=null?`, ${nx-c.xp} more win${nx-c.xp===1?'':'s'} to level ${rk+1}`:''}. Wage ${wageOf(c.k)}. Morale ${pips(c.m,3,'mor')}</span></div>
       ${edit?`<button class="linkbtn" data-dis="${i}">Dismiss</button>`:''}</div>`}).join('')+
     Array.from({length:Math.max(0,berths()-cs.length)},()=>`<div class="crewrow empty"><span class="fitnone"></span><div><b>Empty berth</b><span class="soft">Hire crew at a port tavern.</span></div></div>`).join('')}
-/* the face of whoever mans a fitting, or an empty dashed ring */
-function postFace(s){const c=handAt(s);return c?`<span class="pface" title="${CREW[c.k].n} mans it">${crewFace(c.k)}</span>`:'<span class="pface none" title="Nobody mans it"><i>?</i></span>'}
-/* where a crew member stands: the fitting they man, or the deck */
-function postLine(c){const k=c.post&&fitIn(c.post);return k?`<span class="atpost${skilled(c,k)?' fit':''}">${fitGlyph(k)}At the ${FITTINGS[k].n}${skilled(c,k)?', no downside':''}</span>`:'<span class="atpost idle">On deck, no station</span>'}
+/* a crew member's role line: their perk, and an upgrade they haven't spent yet */
+function postLine(c){const C=CREW[c.k],P=CREWPERK[C.perk];return`<span class="atpost"><b>${P.n}.</b> ${P.d}</span>${c.up?`<button class="linkbtn upbtn" data-up="${G.crew.indexOf(c)}">Upgrade an item (${c.up})</button>`:''}`}
 /* ---------- your ship: trait and fittings ---------- */
-function fitRows(){const live=!app.querySelector('.battle');return Object.keys(SPOTS).map(s=>{const k=fitIn(s);
-  return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${fitDesc(k,s)}</span>`:''}</div>${k?postFace(s):''}${stationHTML(s,live)}</div>`}).join('')}
-/* a fitting's text. On your ship (spot given): faded while nobody mans it, the downside struck out when the right hand does. */
-function fitDesc(k,spot){const F=FITTINGS[k],c=spot&&handAt(spot),sk=skilled(c,k),idle=spot&&!c;
-  const part=(t,cls)=>t?`<span class="${cls}">${t}</span> `:'';
-  return(part(F.shape,'fsh')+part(F.up,'fup'+(idle?' off':''))+part(F.dn,'fdn'+(sk||idle&&!F.always?' off':''))).trim()}
-/* in the shipwright's bubble and the elite's pick: who it needs */
-const fitCraftLine=k=>{const F=FITTINGS[k];return`<span class="fcraft">${craftIcon(F.craft)}Needs a crew member posted at it. One with ${CRAFTS[F.craft]} drops the downside.</span>`};
-/* who mans a fitting, and the faces to tap to post a hand there (tap the one posted to stand them down) */
-function stationHTML(s,live){const k=fitIn(s);if(!k)return'';const c=handAt(s),F=FITTINGS[k],cs=G.crew||[];
-  const msg=!c?(F.always?'Nobody is posted here, so only the downside counts.':'Nobody is posted here, so it does nothing.'):skilled(c,k)?`${CREW[c.k].n} mans it. ${CRAFTS[F.craft]} drops the downside.`:`${CREW[c.k].n} mans it. A hand with ${CRAFTS[F.craft]} would drop the downside.`;
-  return`<div class="station${c?'':' idle'}"><span class="st-msg">${craftIcon(F.craft)}${msg}</span>${cs.length?`<span class="st-hands">${cs.map((h,i)=>{const on=h===c,fit=skilled(h,k),at=!on&&h.post&&fitIn(h.post);
-    return`<button type="button" class="st-h${on?' on':''}${fit?' fit':''}" data-post="${s}" data-i="${i}" ${live?'':'disabled'} aria-pressed="${on}" title="${on?`Stand ${CREW[h.k].n} down`:`Post ${CREW[h.k].n} here${at?`, leaving the ${FITTINGS[at].n}`:''}`}">${crewFace(h.k)}${fit?`<span class="st-cr">${craftIcon(F.craft)}</span>`:''}</button>`}).join('')}</span>`:'<span class="soft">Hire crew to man it.</span>'}</div>`}
+function fitRows(){return Object.keys(SPOTS).map(s=>{const k=fitIn(s);
+  return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${fitDesc(k)}</span>`:''}</div></div>`}).join('')}
+/* a fitting's text, its downside in red */
+function fitDesc(k){const F=FITTINGS[k],part=(t,cls)=>t?`<span class="${cls}">${t}</span> `:'';return(part(F.shape,'fsh')+part(F.up,'fup')+part(F.dn,'fdn')).trim()}
 function renownHTML(){const n=G.renown||0,lv=renownLvl(),nx=renownNext(),prev=lv?RENOWN[lv-1]:0,pc=nx?Math.round((n-prev)/(nx-prev)*100):100;
   return`<div class="renown"><div class="rn-head"><b>Renown ${lv}</b><span class="soft">${nx?`${n} of ${nx} to the next level`:`${n}, the top level`}</span></div>
     <div class="rn-bar" aria-hidden="true"><span style="width:${pc}%"></span></div>
@@ -179,7 +173,7 @@ function shipSheet(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait];
     ${renownHTML()}
     <h3 class="shead">Fittings</h3>
     <div class="fitlist">${fitRows()}</div>
-    <p class="gloss">${G.fit&&Object.values(G.fit).some(Boolean)?'Every fitting is a station: tap a face to post that hand there. Fitting a new part sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one. Each needs a crew member posted at it.'}</p>
+    <p class="gloss">${G.fit&&Object.values(G.fit).some(Boolean)?'Fitting a new part in a spot sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one.'}</p>
     <button class="primary" data-a="c">Close</button>`);
   shipBind(ov)}
 /* big screens: the ship card is built for the space. The ship itself is the hero, drawn large on the water with its four fittings
@@ -194,12 +188,11 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
   const stat=(lbl,big,small,extra)=>`<div class="sc-stat"><span class="sc-lbl">${lbl}</span><b>${big}</b>${small?`<span class="soft">${small}</span>`:''}${extra||''}</div>`;
   const callout=s=>{const k=fitIn(s),F=k&&FITTINGS[k];
     return`<div class="sc-fit${k?'':' empty'}" data-spot="${s}"><span class="sc-lbl">${SPOTS[s]}</span>
-      <div class="sc-fithead">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<b>${F?F.n:'Empty'}</b>${k?postFace(s):''}</div>
-      <p>${F?fitDesc(k,s):`Any port's shipwright can fit ${SPOTS[s].toLowerCase()==='figurehead'?'a figurehead':SPOTS[s].toLowerCase()==='guns'?'guns':`a ${SPOTS[s].toLowerCase()} fitting`}.`}</p>
-      ${k?stationHTML(s,!app.querySelector('.battle')):''}</div>`};
+      <div class="sc-fithead">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<b>${F?F.n:'Empty'}</b></div>
+      <p>${F?fitDesc(k):`Any port's shipwright can fit ${SPOTS[s].toLowerCase()==='figurehead'?'a figurehead':SPOTS[s].toLowerCase()==='guns'?'guns':`a ${SPOTS[s].toLowerCase()} fitting`}.`}</p></div>`};
   const crew=cs.map((c,i)=>{const C=CREW[c.k],rk=crewRank(c),nx2=rankXP()[rk];
       return`<div class="sc-hand"><span class="sc-face">${crewFace(c.k)}</span><div class="sc-who"><b>${C.n}</b><span class="sc-crafts">${crewCrafts1(c.k)}</span>${postLine(c)}
-        <span class="soft">Rank ${rk}${nx2!=null?`, ${nx2-c.xp} more win${nx2-c.xp===1?'':'s'} to rank ${rk+1}`:''}</span>
+        <span class="soft">Level ${rk}${nx2!=null?`, ${nx2-c.xp} more win${nx2-c.xp===1?'':'s'} to level ${rk+1}`:''}</span>
         <span class="soft">Wage ${wageOf(c.k)}. Morale ${pips(c.m,3,'mor')}</span></div>${edit?`<button class="linkbtn" data-dis="${i}">Dismiss</button>`:''}</div>`}).join('')
     +Array.from({length:Math.max(0,berths()-cs.length)},()=>`<div class="sc-hand empty"><span class="sc-face"></span><div class="sc-who"><b>Empty berth</b><span class="soft">Hire crew at a port tavern.</span></div></div>`).join('');
   const picks=(G.perks||[]).length?`<ul class="perks">${G.perks.map(k=>`<li><b>${PERKS[k].n}</b> ${PERKS[k].d}${PERKS[k].order?` <label class="when">Fires <select data-ord="${k}">${Object.entries(WHEN).map(([w,t])=>`<option value="${w}"${orderWhen(k)===w?' selected':''}>${t}</option>`).join('')}</select></label>`:''}</li>`).join('')}</ul>`
@@ -213,7 +206,7 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
       <div class="sc-fits right">${callout('sails')}${callout('guns')}</div>
       <svg class="sc-lines" aria-hidden="true"></svg>
     </div>
-    <p class="sc-note soft">${G.fit&&Object.values(G.fit).some(Boolean)?'Every fitting is a station: tap a face to post that hand there. Fitting a new part sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one. Each needs a crew member posted at it.'}</p>
+    <p class="sc-note soft">${G.fit&&Object.values(G.fit).some(Boolean)?'Fitting a new part in a spot sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one.'}</p>
     <div class="sc-foot"><section class="sc-crew"><h3 class="shead">Crew</h3><div class="sc-hands">${crew}</div></section>
       <section class="sc-picks"><h3 class="shead">Captain's picks</h3>${picks}</section></div>`,true,'shipview');
   // leader lines from each fitting to its part of the ship, drawn once the card is laid out (and again if the window changes)
@@ -222,20 +215,14 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
     svg.innerHTML=[...hero.querySelectorAll('.sc-fit')].map(el=>{const r=el.getBoundingClientRect(),[ax,ay]=P[el.dataset.spot],x=A.left-H.left+ax/120*A.width,y=A.top-H.top+ay/110*A.height,
       left=el.parentElement.classList.contains('left'),sx=(left?r.right:r.left)-H.left,sy=r.top-H.top+22,mx=sx+(left?28:-28);
       return`<path d="M${sx} ${sy}H${mx}L${x} ${y}"${el.classList.contains('empty')?' stroke-dasharray="4 4"':''}/><circle cx="${x}" cy="${y}" r="4.5"/>`}).join('');
-    // whoever mans each fitting stands on the ship at its spot
-    hero.querySelectorAll('.sc-onship').forEach(e=>e.remove());
-    Object.keys(SPOTS).forEach(s=>{const c=fitIn(s)&&handAt(s);if(!c)return;const[ax,ay]=P[s],d=document.createElement('span');d.className='sc-onship'+(skilled(c,fitIn(s))?' fit':'');d.title=`${CREW[c.k].n} at the ${FITTINGS[fitIn(s)].n}`;
-      d.innerHTML=crewFace(c.k);d.style.left=(A.left-H.left+ax/120*A.width)/H.width*100+'%';d.style.top=(A.top-H.top+ay/110*A.height)/H.height*100+'%';hero.appendChild(d)})};
+};
   requestAnimationFrame(lay);addEventListener('resize',lay);
   shipBind(ov)}
 /* the ship card's buttons: order triggers, dismissing crew, closing */
 function shipBind(ov){
   ov.querySelectorAll('[data-ord]').forEach(s=>s.onchange=()=>{G.orders=Object.assign({},G.orders,{[s.dataset.ord]:s.value});save();toast(`${PERKS[s.dataset.ord].n} fires ${WHEN[s.value]}`)});
-  ov.addEventListener('click',e=>{const p=e.target.closest('[data-post]');
-    if(p&&!p.disabled){const i=+p.dataset.i,s=p.dataset.post,c=G.crew[i],on=c.post===s;postHand(i,on?null:s);save();
-      toast(on?`${CREW[c.k].n} stands down`:`${CREW[c.k].n} mans the ${FITTINGS[fitIn(s)].n}`);
-      const sh=ov.querySelector('.sheet'),y=sh&&sh.scrollTop;ov.remove();shipSheet();const n=document.querySelector('.overlay:last-child .sheet');if(n&&y)n.scrollTop=y;
-      if(app.querySelector('.map'))chart();else if(app.querySelector('#leave'))port(G.at);return}
+  ov.addEventListener('click',e=>{const u=e.target.closest('[data-up]');
+    if(u){ov.remove();crewUpPick(G.crew[+u.dataset.up],()=>{if(app.querySelector('#leave'))port(G.at);else if(app.querySelector('.map'))chart();shipSheet()});return}
     const d=e.target.closest('[data-dis]');if(d){const c=G.crew[+d.dataset.dis];
       if(d.dataset.sure){G.crew.splice(+d.dataset.dis,1);logL(`Let ${CREW[c.k].n} go.`);save();ov.remove();toast(`${CREW[c.k].n} leaves the ship`);if(app.querySelector('#leave'))port(G.at);else chart();return}
       d.dataset.sure=1;d.textContent='Tap again to dismiss';return}

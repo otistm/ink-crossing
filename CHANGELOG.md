@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.38.0
+- Every item now belongs to the crew (blades, pistols, bandages, charms) or to the ship (cannons, sails, planking), and is a weapon, haste, heal or shield. Some also carry an element: fire, venom or blessed. Item cards say which.
+- Ship cargo works on its own. Crew cargo needs a hand aboard who masters it, or it stays faded.
+- The crew are now six roles, one of each per ship: Master-at-Arms (crew weapons and shields), Master Gunner (ship weapons), Boatswain (ship haste), Quartermaster (ship shields and heals), Ship's Surgeon (crew heals) and Sea Witch (crew haste). Each has a perk: Boarding Party, Powder Rations, Batten Down, Smuggler's Charm, Triage and Dark Tidings.
+- Hands level up as you win (after 2, 5, 9 and 14 wins). Every level lets you raise one item of their classes a tier. Save it for later and it waits on your ship card.
+- The market is now four stalls: the Shipyard sells ship cargo to anyone, and the Armory, Apothecary and Charms only sell to a captain with the right hand aboard. Their keepers turn you away otherwise.
+- Fittings simply work again, trade-off and all, while they're redesigned. Crew stations are gone.
+- The maiden voyage teaches the new Gullhaven: a sail from the Shipyard, the Armory refusing you, the Master-at-Arms, then the Rapier.
+- Voyages in progress keep their crew: each hand becomes the role that took over their work (one of each), and any extras are paid off.
+
 ## 0.37.1
 - Hands at the tavern now pitch the stations they'd man, not just cargo. Their bubble lists every fitting they man with no downside, highlights the ones on your ship, and points out a fitting of yours that nobody mans.
 - The ship card shows who mans each fitting: their face sits beside the fitting's name (a red question mark when nobody does), and every crew member says which station they're at. On big screens their faces also stand on the ship drawing, at their fitting's spot.

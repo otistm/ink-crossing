@@ -6,7 +6,7 @@ let G=null,B=null,raf=0,last=0,bump=null,fresh=false;
    RULES FOR CHANGES: never rename or remove a field; give new fields a default in migrateAtlas / VOYAGE_DEFAULTS;
    if a field's meaning changes, bump the schema number and convert old data in the migrate function. */
 const ATLAS_SCHEMA=1,VOYAGE_SCHEMA=1;
-const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0};
+const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0,triage:0,qmDay:null};
 function readKey(key){let raw=null;try{raw=localStorage.getItem(key)}catch(e){}if(!raw)return{raw:null,val:null};
   try{return{raw,val:JSON.parse(raw)}}catch(e){try{localStorage.setItem(key+'-unreadable',raw)}catch(_){}return{raw,val:null}}}
 function migrateAtlas(m){
@@ -15,7 +15,7 @@ function migrateAtlas(m){
   ['voyages','wins','bosses','elites','best'].forEach(k=>{if(typeof out[k]!=='number'||!isFinite(out[k]))out[k]=0});
   // for the future: if(out.sv<2){ ...convert...; out.sv=2; }
   out.sv=ATLAS_SCHEMA;return out}
-function migrateVoyage(v){if(!v||!v.map||!v.board)return null;const out=Object.assign({},VOYAGE_DEFAULTS,v);out.sv=VOYAGE_SCHEMA;if(!out.crew)crewFromOldSave(out);trimHold(out);if(out.perks&&out.perks.some(k=>!PERKS[k]))out.perks=[];if(!out.posted)autoPost(out);return out}
+function migrateVoyage(v){if(!v||!v.map||!v.board)return null;const out=Object.assign({},VOYAGE_DEFAULTS,v);out.sv=VOYAGE_SCHEMA;if(!out.crew)crewFromOldSave(out);trimHold(out);if(out.perks&&out.perks.some(k=>!PERKS[k]))out.perks=[];mapCrew(out);return out}
 /* holds shrank from 10 slots to 9: whatever no longer fits moves to the locker if there's room, otherwise it's sold */
 function trimHold(g){const cap=g.fit&&Object.values(g.fit).includes('planks')?HOLD-1:HOLD;
   while(g.board.length&&used(g.board)>cap){const it=g.board.pop(),d=DEFS[it.k];
@@ -43,6 +43,13 @@ function load(){return migrateVoyage(readKey('crossing-voyage').val)}
 function clearSave(){try{localStorage.removeItem('crossing-voyage')}catch(e){}}
 const hasC=k=>!!(G&&G.charts&&G.charts.some(c=>c.k===k));
 /* ---------- crew ---------- */
+/* crew roles came in (0.38): old hands become the role that took over their work, one of each; extras are paid off.
+   Station posts are cleared, and port taverns are restocked with roles. */
+function mapCrew(g){if(!g.crew)return;const seen=new Set();
+  g.crew=g.crew.filter(c=>{const k=CREW[c.k]?c.k:OLDCREW[c.k];delete c.post;if(!k||seen.has(k)){g.gold+=5;return false}seen.add(k);c.k=k;return true});
+  for(const id in g.shops||{}){const S=g.shops[id];if(S.tavern)S.tavern=S.tavern.map(k=>k&&(CREW[k]?k:OLDCREW[k])||null).map((k,i,a)=>k&&!seen.has(k)&&a.indexOf(k)===i?k:null)}}
+/* is a hand with this perk aboard? */
+const crewHas=perk=>!!(G&&G.crew&&G.crew.some(c=>CREW[c.k]&&CREW[c.k].perk===perk));
 const berths=()=>(SHIPS[G.ship].berths||3)+(hasP('berth')?1:0)+(hasF('ballast')?FITTINGS.ballast.berth:0);
 const rankXP=()=>hasP('drill')?RANKXP.map(x=>Math.max(0,x-1)):RANKXP;
 const crewRank=c=>rankXP().filter(x=>c.xp>=x).length;
@@ -54,7 +61,7 @@ const feeOf=k=>guildPays(k)?0:Math.max(1,CREW[k].fee-(hasP('recruiter')?3:0));
 function crewCrafts(){if(!G||!G.crew)return null;return new Set(G.crew.flatMap(c=>CREW[c.k].crafts))}
 /* the rank of each craft aboard: the best crew member with it */
 function craftRanks(){const r={};((G&&G.crew)||[]).forEach(c=>CREW[c.k].crafts.forEach(k=>r[k]=Math.max(r[k]||0,crewRank(c))));return r}
-function hire(k){G.crew=G.crew||[];G.crew.push({k,xp:0,m:3});autoPost();logL(feeOf(k)?`Hired ${an(CREW[k].n)} for ${feeOf(k)} gold.`:`Signed on ${an(CREW[k].n)}. The Guild paid.`)}
+function hire(k){G.crew=G.crew||[];G.crew.push({k,xp:0,m:3});if(CREW[k].perk==='triage'&&!G.triage)G.triage=20;logL(feeOf(k)?`Hired ${an(CREW[k].n)} for ${feeOf(k)} gold.`:`Signed on ${an(CREW[k].n)}. The Guild paid.`)}
 /* wages at every new port: paid in order while the gold lasts. Unpaid crew lose heart, and leave when it runs out. */
 function payWages(){if(!G.crew||!G.crew.length||G.tut||G.path.length<2)return'';   // nothing is owed in the port you set out from
   let paid=0,left=[],sad=[];
@@ -67,22 +74,13 @@ function payWages(){if(!G.crew||!G.crew.length||G.tut||G.path.length<2)return'';
 /* fittings: G.fit is {hull,sails,guns,head}, or null until the first one */
 const hasF=k=>!!(G&&G.fit&&Object.values(G.fit).includes(k));
 const fitIn=spot=>G&&G.fit&&G.fit[spot]||null;
-/* crew posts: each fitting is a station. A hand at it (c.post is its spot) makes it work; a hand with its craft also drops the downside */
-const handAt=(spot,g)=>((g||G)&&(g||G).crew||[]).find(c=>c.post===spot)||null;
-const skilled=(c,k)=>!!(c&&k&&CREW[c.k].crafts.includes(FITTINGS[k].craft));
-const fitOn=k=>hasF(k)&&!!handAt(FITTINGS[k].spot);
-const fitDown=k=>{if(!hasF(k))return false;const c=handAt(FITTINGS[k].spot);return c?!skilled(c,k):!!FITTINGS[k].always};
-const fitHP=()=>G&&G.fit?Object.values(G.fit).reduce((a,k)=>{const h=k&&FITTINGS[k].hp||0;return a+(h>0&&fitOn(k)||h<0&&fitDown(k)?h:0)},0):0;
-/* post a hand at every fitting nobody mans: an idle one with its craft if there is one, else any idle one */
-function autoPost(g){g=g||G;g.posted=1;if(!g.fit||!g.crew)return;
-  for(const s of Object.keys(SPOTS)){const k=g.fit[s];if(!k||handAt(s,g))continue;
-    const idle=g.crew.filter(c=>!c.post||!g.fit[c.post]),h=idle.find(c=>skilled(c,k))||idle[0];if(h)h.post=s}}
-/* move a hand to a station (or off it, with spot null). Whoever was there stands down. */
-function postHand(i,spot){const c=G.crew[i];if(!c)return;G.crew.forEach(x=>{if(spot&&x.post===spot)delete x.post});
-  if(spot)c.post=spot;else delete c.post;if(fitIn('sails')==='studding')updateReveal()}
+/* fittings simply work, trade-off and all (crew stations were tried in 0.37 and replaced by crew roles in 0.38) */
+const fitOn=k=>hasF(k);
+const fitDown=k=>hasF(k);
+const fitHP=()=>G&&G.fit?Object.values(G.fit).reduce((a,k)=>a+(k&&FITTINGS[k].hp||0),0):0;
 /* your hold's size: HOLD slots, one fewer with Double Planking. Never more than HOLD. */
 /* your ship's health in a fight at this depth: it grows as the seas get deeper, plus the Bulwark's trait, Coral Reef and fittings */
-function shipHP(depth){const sh=SHIPS[G.ship];return sh.hp+depth*10+(sh.trait==='bulwark'?40:0)+(hasC('coral')?25:0)+fitHP()+(G.tut?120:0)}
+function shipHP(depth){const sh=SHIPS[G.ship];return sh.hp+depth*10+(sh.trait==='bulwark'?40:0)+(hasC('coral')?25:0)+fitHP()+(G.triage||0)+(G.tut?120:0)}
 /* the health you'd fight with next: in a fight, that fight's; on the way, at the next row's depth */
 function nextHP(){if(B&&B.P)return B.P.max;const n=G.map&&node(G.at);if(!n)return shipHP(0);return shipHP(depthOf({row:Math.min(n.row+1,mapRows())}))}
 const holdCap=()=>hasF('planks')?HOLD-1:HOLD;
@@ -98,7 +96,7 @@ const hasP=k=>!!(G&&G.perks&&G.perks.includes(k));
 /* fit a part. The one it replaces sells for half. */
 function equip(k){const f=FITTINGS[k],old=fitIn(f.spot);G.fit=Object.assign({hull:null,sails:null,guns:null,head:null},G.fit);
   let back=0;if(old){back=Math.floor(FITTINGS[old].p/2);G.gold+=back}
-  G.fit[f.spot]=k;autoPost();if(k==='studding'||old==='studding')updateReveal();
+  G.fit[f.spot]=k;if(k==='studding'||old==='studding')updateReveal();
   logL(old?`Fitted ${f.n} in place of ${FITTINGS[old].n}, which sold for ${back} gold.`:`Fitted ${f.n}.`);return back}
 /* can this part go on? Double Planking needs a free slot, and taking it off always fits */
 function canEquip(k){const f=FITTINGS[k],old=fitIn(f.spot);if(old===k)return false;
