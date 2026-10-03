@@ -96,12 +96,15 @@ Every item is one `I(key, name, size, cooldown, tags, ship, glyph|crewLook, fiel
 - Old saves get crew from `crewFromOldSave()` in state.js. Don't remove it.
 
 ## Fittings
-- A fitting is one row in `FITTINGS` (world.js): name, spot, price, optional `hp` (health in fights), text and a 30×30 glyph. Its effect is written where it applies, checked with `hasF(key)`, like landmarks with `hasC`.
-- Fittings change rules or the ship's shape (berths, hold size, positions, the storm), not plain numbers. Fight effects go in `setupFight()` (start of fight), `step()` (charge speed, storm, ticks), `fire()` or `applyFx()`/`burnOn()`/`poisonOn()` (damage, crits, healing). `setupFight()` is shared with `tools/sim.mjs`, so new effects show up in the balance numbers.
+- A fitting is one row in `FITTINGS` (world.js): name, spot, price, `craft`, optional `hp` (health in fights), its text in parts (`shape`, `up`, `dn`; `d` is built from them) and a 30×30 glyph.
+- Every fitting is a station a crew member mans (`c.post` in `G.crew` is the spot). `fitOn(k)`: fitted and manned, so its `up` works. `fitDown(k)`: its `dn` applies, which is while manned by a hand without its `craft` (or, with `always:1`, also while nobody mans it). `shape` (a hold slot, a berth) holds regardless, through `hasF(k)`. Positive `hp` needs a hand, negative `hp` is the downside.
+- In fights read them through `fOn(k)` and `fDn(k)` (battle.js, cached in `setupFight()`), and call `postFx(k)` whenever a station does its job: it makes that hand's face jump on your fighter card (`deckHTML()`) and earns them double experience from a win.
+- `autoPost()` posts idle hands at unmanned fittings (on buying a fitting, on hiring, and once for old saves via `G.posted`); `postHand(i,spot)` moves a hand; the ship card's `stationHTML()` shows who mans each fitting with faces to tap.
+- Fittings change rules or the ship's shape (berths, hold size, positions, the storm), not plain numbers. Fight effects go in `setupFight()` (start of fight), `step()` (charge speed, storm, ticks), `fire()` or `applyFx()`/`burnOn()`/`poisonOn()` (damage, crits, healing), split into `fOn` and `fDn`. `setupFight()` is shared with `tools/sim.mjs`, so new effects show up in the balance numbers.
 - Every hold has `HOLD` (9) slots, enemies included. The player's hold size is `holdCap()`, never a literal number.
 - **Rule: nothing may ever increase the number of hold slots.** No item, fitting, landmark, captain's pick, crew rank or event adds slots. Things may only take slots away (like Double Planking). Extra space belongs in the locker or crew berths instead.
 - Losing a fight you survive removes one fitting (`loseFit()` in battle.js, seeded by voyage, stop and day).
-- After adding or changing a fitting, run `npm run sim:fits`. It prints each fitting's win rate against having none. Differences under about 3 points are noise.
+- After adding or changing a fitting, run `npm run sim:fits`. It prints each fitting's win rate against having none, manned by a hand without its craft and by one with it. Differences under about 3 points are noise.
 
 ## Renown and captain's picks
 - The four systems each have a job, so don't let them overlap: items are what happens, crew are who can make it happen (crafts), fittings are the ship's shape and rules, and renown is the captain's decisions. Avoid plain "+damage" or "+speed" on fittings and renown.

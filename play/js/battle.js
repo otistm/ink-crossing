@@ -7,12 +7,22 @@ function mkSide(name,max,list,traits,sea,cr){const b=sideOf(list,cr);
 /* the item whose effect is being applied right now, so hits can be credited to it in the fight recap */
 let recIt=null;
 const hasT=(S,k)=>S.traits.some(x=>x.k===k);
-function fighterHTML(S,k,c){return`<div class="fighter ${k} ${c||''}" id="${k}f" ${k==='e'?'role="button" tabindex="0"':''}><div class="who"><span class="name">${S.name}</span><span class="num" id="${k}hp"></span></div><div class="hpwrap"><div class="hpbar"><div class="lag" id="${k}lag"></div><div class="hp" id="${k}hpf"></div><div class="inc burnseg" id="${k}bs"></div><div class="inc poiseg" id="${k}ps"></div><div class="sh" id="${k}shf"></div></div><div class="chips" id="${k}st" aria-live="off"></div></div><p class="traits">${S.traits.map(t=>TRAITS[t.k].n).join(', ')}${k==='e'?' <span>Tap to read.</span>':''}</p></div>`}
+/* fittings in a fight: fOn is a manned station doing its job, fDn its downside (set once in setupFight). postFx marks the station
+   as having worked (its hand learns more from a win) and makes that hand's face jump on your ship's card. Returns true. */
+const fOn=k=>B.fon.has(k),fDn=k=>B.fdn.has(k);
+function postFx(k){const s=FITTINGS[k].spot,now=B.t;B.posts[s]=(B.posts[s]||0)+1;
+  if(!B.quiet&&B.P&&B.P.fel&&!B.intro&&!((B.postT||{})[s]>now-.8)){B.postT=Object.assign({},B.postT,{[s]:now});const el=B.P.fel.querySelector(`.post[data-post="${s}"]`);if(el){el.classList.remove('fire');void el.offsetWidth;el.classList.add('fire')}}
+  return true}
+function fighterHTML(S,k,c){return`<div class="fighter ${k} ${c||''}" id="${k}f" ${k==='e'?'role="button" tabindex="0"':''}><div class="who"><span class="name">${S.name}</span><span class="num" id="${k}hp"></span></div><div class="hpwrap"><div class="hpbar"><div class="lag" id="${k}lag"></div><div class="hp" id="${k}hpf"></div><div class="inc burnseg" id="${k}bs"></div><div class="inc poiseg" id="${k}ps"></div><div class="sh" id="${k}shf"></div></div><div class="chips" id="${k}st" aria-live="off"></div></div><div class="fline"><p class="traits">${S.traits.map(t=>TRAITS[t.k].n).join(', ')}${k==='e'?' <span>Tap to read.</span>':''}</p>${k==='p'?deckHTML():''}</div></div>`}
+/* your crew on deck, on your ship's card: a hand at a fitted station wears its badge and jumps when it works (postFx) */
+function deckHTML(){const cs=(G&&G.crew)||[];if(!cs.length)return'';
+  return`<div class="fdeck" aria-label="Crew">${cs.map(c=>{const k=c.post&&fitIn(c.post);
+    return`<span class="dk${k?' post':''}"${k?` data-post="${c.post}" title="${CREW[c.k].n} at the ${FITTINGS[k].n}"`:` title="${CREW[c.k].n}"`}><span class="dkf">${crewFace(c.k)}</span>${k?`<span class="dkb">${fitGlyph(k)}</span>`:''}</span>`}).join('')}</div>`}
 /* Builds the fight (B) without touching the screen. fight() uses it, and so does tools/sim.mjs, so the balance numbers match the game. */
 function setupFight(n,f,board){
   const depth=f.depth,sh=SHIPS[G.ship];
-  const pMax=shipHP(depth);
-  B={dot:{p:{burn:0,poison:0,storm:0},e:{burn:0,poison:0,storm:0}},t:0,wait:.9,speed:window._spd||1,over:false,quiet:false,bt:0,pt:0,st:0,storm:0,node:n,bell:BELL+(hasC('calm')?6:0)-(hasF('stormsail')?5:0),ram:hasF('ram'),cr:craftRanks(),orders:ordersAboard(),
+  const pMax=shipHP(depth),on=new Set(Object.keys(FITTINGS).filter(fitOn)),dn=new Set(Object.keys(FITTINGS).filter(fitDown));
+  B={fon:on,fdn:dn,posts:{},dot:{p:{burn:0,poison:0,storm:0},e:{burn:0,poison:0,storm:0}},t:0,wait:.9,speed:window._spd||1,over:false,quiet:false,bt:0,pt:0,st:0,storm:0,node:n,bell:BELL+(hasC('calm')?6:0)-(dn.has('stormsail')?5:0),ram:on.has('ram'),cr:craftRanks(),orders:ordersAboard(),
      P:mkSide(sh.n,pMax,board.map(x=>({...x})),[sh.trait],G.sea,crewCrafts()),E:mkSide('The '+f.e.n,f.hp,f.list,f.e.traits,G.sea)};
   const P=B.P,E=B.E;
   for(const S of [P,E])S.items.forEach(it=>{if(it.s.cd)it.c=it.s.cd*it.s.pre});
@@ -20,14 +30,18 @@ function setupFight(n,f,board){
   P.items.forEach(it=>{if(!it.s.cd)return;if(hasC('whale'))it.s.cd=Math.round(it.s.cd*9)/10;if(hasC('current'))it.c=Math.max(it.c,it.s.cd*.25)});
   if(hasT(E,'smoke'))P.items.forEach(it=>it.sl=3);
   if(hasT(E,'rush'))E.items.forEach(it=>it.h=Math.max(it.h,4));
-  if(hasT(E,'fire'))P.burn+=hasF('copper')?Math.ceil(TRAITS.fire.x(G.sea)/2):TRAITS.fire.x(G.sea);
+  if(hasT(E,'fire')){if(fOn('copper'))postFx('copper');P.burn+=fOn('copper')?Math.ceil(TRAITS.fire.x(G.sea)/2):TRAITS.fire.x(G.sea)}
   if(hasT(E,'whirl'))B.bell-=8;
   // fittings at the start of a fight
-  if(hasF('kraken')){E.max=E.hp=Math.round(E.max*1.1);E.items.forEach(it=>it.sl=Math.max(it.sl,3))}
+  // fittings at the start of a fight: the good half needs a hand at the station, the downside goes with the right hand there
+  if(fDn('kraken'))E.max=E.hp=Math.round(E.max*1.1);
+  if(fOn('kraken')){E.items.forEach(it=>it.sl=Math.max(it.sl,3));postFx('kraken')}
   const pc=P.items.filter(it=>it.s.cd);
-  if(hasF('lateen')&&pc.length){pc[0].c=pc[0].s.cd*.98;if(pc.length>1)pc[pc.length-1].sl=Math.max(pc[pc.length-1].sl,3)}
-  if(hasF('chase'))P.items.forEach(it=>{const t=DEFS[it.k].tags;if(!it.s.cd)return;if(t.includes('C'))it.c=Math.max(it.c,it.s.cd*.5);if(t.includes('W'))it.sl=Math.max(it.sl,2)});
-  if(hasF('studding'))P.items.forEach(it=>it.sl=Math.max(it.sl,1));
+  if(fOn('lateen')&&pc.length){pc[0].c=pc[0].s.cd*.98;postFx('lateen')}if(fDn('lateen')&&pc.length>1)pc[pc.length-1].sl=Math.max(pc[pc.length-1].sl,3);
+  if(fOn('chase')&&P.items.some(it=>it.s.cd&&DEFS[it.k].tags.includes('C')))postFx('chase');
+  P.items.forEach(it=>{const t=DEFS[it.k].tags;if(!it.s.cd)return;if(fOn('chase')&&t.includes('C'))it.c=Math.max(it.c,it.s.cd*.5);if(fDn('chase')&&t.includes('W'))it.sl=Math.max(it.sl,2)});
+  if(fDn('studding'))P.items.forEach(it=>it.sl=Math.max(it.sl,1));
+  if(fOn('planks'))postFx('planks');if(fOn('topsail')&&pc.length>1)postFx('topsail');
   // renown perks at the start of a fight
   if((B.cr.sea||0)>=2)P.items.forEach(it=>{if(it.s.cd)it.c=Math.max(it.c,it.s.cd*.15)});
   // your end slots, for fittings that care where cargo sits
@@ -57,13 +71,15 @@ function fight(n){
   if(!matchMedia('(prefers-reduced-motion:reduce)').matches&&!G.tut){const bt=app.querySelector('.battle');B.intro=true;bt.classList.add('intro');
     bt.querySelectorAll('.board').forEach(b=>b.querySelectorAll('.item').forEach((el,i)=>el.style.setProperty('--i',i)));
     const call=document.createElement('div');call.className='fightcall';call.setAttribute('aria-hidden','true');call.innerHTML='<span>Fight!</span>';document.body.appendChild(call);const mr=bt.querySelector('.mid').getBoundingClientRect();call.style.top=(mr.top+mr.height/2)+'px';   // between the two sides
-    const end=()=>{if(!B||!B.intro)return;B.intro=false;setTimeout(()=>{bt.classList.remove('intro');call.remove()},500);bt.removeEventListener('pointerdown',end,true)};
-    setTimeout(end,1650);bt.addEventListener('pointerdown',end,true)}
+    const end=()=>{if(!B||!B.intro)return;B.intro=false;setTimeout(postFlash,250);setTimeout(()=>{bt.classList.remove('intro');call.remove()},500);bt.removeEventListener('pointerdown',end,true)};
+    setTimeout(end,1650);bt.addEventListener('pointerdown',end,true)}else setTimeout(postFlash,300);
   E.fel.onclick=()=>{const ov=overlay(`<h2>${E.name}</h2>${traitsHTML(f.e,G.sea)}<button class="primary" data-a="c">Close</button>`);ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-a]'))ov.remove()})};
   app.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{B.speed=window._spd=+b.dataset.sp;app.querySelectorAll('[data-sp]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
   document.getElementById('skip').onclick=()=>{if(B.over)return;B.intro=false;B.quiet=true;let k=0;while(!B.over&&k++<30000)step(.05);draw()};
   draw();last=performance.now();raf=requestAnimationFrame(loop);scrollTo(0,0);coach('fight');
 }
+/* the stations that went to work as the fight began (Planking, a Lateen Rig, Chase Guns...) jump once the fight is on screen */
+function postFlash(){if(!B||B.over||B.quiet||!B.P.fel)return;B.P.fel.querySelectorAll('.post').forEach(el=>{if(B.posts[el.dataset.post]){el.classList.remove('fire');void el.offsetWidth;el.classList.add('fire')}})}
 /* "when a fight starts" effects, both sides */
 function startFx(){for(const[S,F]of[[B.P,B.E],[B.E,B.P]])S.items.forEach((it,i)=>{if(it.s.start)applyFx(S,F,it,i,it.s.start,1)})}
 function loop(now){if(!B)return;let dt=Math.min(.1,(now-last)/1000)*B.speed;last=now;if(B.coachHold||PAUSE.on||B.intro)dt=0;
@@ -92,18 +108,18 @@ function applyFx(S,F,it,i,f,depth){
   const g=it.g,el=it.el,prevRec=recIt;recIt=it;
   if(f.dmg!=null||f.dmgX){const W=DEFS[it.k].tags.includes('W'),C=DEFS[it.k].tags.includes('C'),me=S===B.P;
     let base=(f.dmg||0)+(g.dmg||0)+xVal(S,F,f.dmgX);
-    if(me&&C&&hasF('grapeshot'))base=Math.max(1,base-2);
+    if(me&&C&&fDn('grapeshot'))base=Math.max(1,base-2);
     const cr=me?B.cr:{},cc=(f.crit||0)+(me&&C&&(cr.gun||0)>=2?.1:0);
     for(let k=0;k<(f.multi||1);k++){let d=base;let c=cc&&Math.random()<cc;if(me&&W&&!C&&(cr.steel||0)>=2&&!B.firstCrit){B.firstCrit=true;c=true}if(c){d*=2;if(it.rec)it.rec.crits++}
-      if(c&&me&&hasF('gull')&&!B.gullDone){B.gullDone=true;S.items.forEach(x=>{if(x.s.cd)x.h=Math.max(x.h,2)});pop(S.fel,'The gull cries!','haste')}
-      const pr=f.pierce||(me&&C&&(cr.gun||0)>=3)||(me&&c&&W&&!C&&(cr.steel||0)>=3)||(me&&W&&hasF('swivel')&&B.ends.includes(it));
+      if(c&&me&&fOn('gull')&&!B.gullDone){B.gullDone=true;postFx('gull');S.items.forEach(x=>{if(x.s.cd)x.h=Math.max(x.h,2)});pop(S.fel,'The gull cries!','haste')}
+      const pr=f.pierce||(me&&C&&(cr.gun||0)>=3)||(me&&c&&W&&!C&&(cr.steel||0)>=3)||(me&&W&&fOn('swivel')&&B.ends.includes(it)&&postFx('swivel'));
       hit(F,d,c?'crit':'dmg',S,{pierce:pr,weapon:W,depth});
-      if(f.burnPerHit)burnOn(S,F,f.burnPerHit,it,depth);if(me&&C&&hasF('grapeshot'))burnOn(S,F,1,it,depth);if(f.poisonPerHit)poisonOn(S,F,f.poisonPerHit,it,depth);
+      if(f.burnPerHit)burnOn(S,F,f.burnPerHit,it,depth);if(me&&C&&fOn('grapeshot')){postFx('grapeshot');burnOn(S,F,1,it,depth)}if(f.poisonPerHit)poisonOn(S,F,f.poisonPerHit,it,depth);
       if(hasT(S,'coil')&&W)F.poison+=1;if(c)emit(S,F,'crit',it,depth)}}
   const sh=(f.shield||0)+(g.shield||0)+Math.round(xVal(S,F,f.shieldX));
   const noSh=S===B.E&&S.burn>0&&(B.cr.fire||0)>=3;
   if((f.shield!=null||f.shieldX)&&sh>0&&!noSh){S.shield+=sh;if(it.rec)it.rec.shield+=sh;pop(el||S.fel,'+'+sh+' shield','shield');emit(S,F,'shield',it,depth)}
-  const hl=(f.heal||0)+(g.heal||0)+Math.round(xVal(S,F,f.healX))-(S===B.P&&hasF('mermaid')?2:0);
+  const hl=(f.heal||0)+(g.heal||0)+Math.round(xVal(S,F,f.healX))-(S===B.P&&fDn('mermaid')?2:0);
   const noHl=S===B.E&&S.poison>0&&(B.cr.alch||0)>=2;
   if((f.heal!=null||f.healX)&&hl>0&&!noHl){if(S===B.P&&(B.cr.med||0)>=2&&S.hp+hl>S.max)S.shield+=Math.round(S.hp+hl-S.max);{const h0=S.hp;S.hp=Math.min(S.max,S.hp+hl);if(it.rec)it.rec.heal+=S.hp-h0}if(S.burn)S.burn--;if(hasT(S,'lotus'))S.shield+=Math.round(hl/3);pop(el||S.fel,'+'+hl,'heal');emit(S,F,'heal',it,depth)}
   if(f.cleanse)S.poison=0;
@@ -117,8 +133,8 @@ function applyFx(S,F,it,i,f,depth){
   if(f.grow)for(const k in f.grow)g[k]=(g[k]||0)+f.grow[k];
   recIt=prevRec;
 }
-function burnOn(S,F,n,it,depth){let b=n+(hasT(S,'kindle')?1:0);if(F===B.P){if(hasF('magazine'))b++;if(hasF('copper'))b=Math.ceil(b/2)}F.burn+=b;if(it&&it.rec)it.rec.burn+=b;pop(it&&it.el||S.fel,'Burn '+b);emit(S,F,'burn',it,depth)}
-function poisonOn(S,F,n,it,depth){if(F===B.P&&hasF('copper'))n=Math.ceil(n/2);F.poison+=n;if(it&&it.rec)it.rec.poison+=n;pop(it&&it.el||S.fel,'Poison '+n);emit(S,F,'poison',it,depth)}
+function burnOn(S,F,n,it,depth){let b=n+(hasT(S,'kindle')?1:0);if(F===B.P){if(fDn('magazine'))b++;if(fOn('copper')){b=Math.ceil(b/2);postFx('copper')}}F.burn+=b;if(it&&it.rec)it.rec.burn+=b;pop(it&&it.el||S.fel,'Burn '+b);emit(S,F,'burn',it,depth)}
+function poisonOn(S,F,n,it,depth){if(F===B.P&&fOn('copper')){n=Math.ceil(n/2);postFx('copper')}F.poison+=n;if(it&&it.rec)it.rec.poison+=n;pop(it&&it.el||S.fel,'Poison '+n);emit(S,F,'poison',it,depth)}
 /* reactions: items listening for things that happen on their own side */
 function emit(S,F,ev,src,depth){
   if(depth>3||!S.items)return;
@@ -144,26 +160,26 @@ function act(k,S,F){const T=TRAITS[k],x=T.x?T.x(S.sea):0;
 function fire(S,F,it,i){
   squish(it.el,'fire');it.rec.uses++;
   applyFx(S,F,it,i,it.s.fx,0);
-  if(S===B.P&&hasF('magazine')&&!B.magDone&&DEFS[it.k].tags.includes('C')){B.magDone=true;pop(it.el||S.fel,'Again!','haste');applyFx(S,F,it,i,it.s.fx,0)}
+  if(S===B.P&&fOn('magazine')&&!B.magDone&&DEFS[it.k].tags.includes('C')){B.magDone=true;postFx('magazine');pop(it.el||S.fel,'Again!','haste');applyFx(S,F,it,i,it.s.fx,0)}
   emit(S,F,'use',it,0);emit(S,F,'adjUse',it,0);
 }
 function step(dt){
   if(B.wait>0){B.wait-=dt;return}
   checkOrders();
-  if(B.ram){B.ram=false;pop(B.P.fel,'Ram!','haste');if(!B.quiet)toast(`Iron Ram: ${10+G.sea*5} damage`);hit(B.E,10+G.sea*5,'dmg',B.P);B.P.hp-=3;pop(B.P.fel,'−3','soft')}
+  if(B.ram){B.ram=false;pop(B.P.fel,'Ram!','haste');if(!B.quiet)toast(`Iron Ram: ${10+G.sea*5} damage`);hit(B.E,10+G.sea*5,'dmg',B.P);postFx('ram');if(fDn('ram')){B.P.hp-=3;pop(B.P.fel,'−3','soft')}}
   B.t+=dt;
   for(const[S,F]of[[B.P,B.E],[B.E,B.P]]){
     S.items.forEach((it,i)=>{if(!it.s.cd)return;let r=1;
       if(it.h>0){r*=2;it.h-=dt}if(it.sl>0){r*=.5;it.sl-=dt}
       if(hasT(S,'swift'))r*=1.15;if(S===B.E&&S.poison>=8&&(B.cr.alch||0)>=3)r*=.8;if(hasT(S,'frenzy')&&S.hp<S.max/2)r*=1.5;
-      if(S===B.P){if(hasF('topsail')){if(it===B.rightIt)r*=2;else if(it===B.leftIt)r*=.5}if(hasF('swivel')&&DEFS[it.k].tags.includes('C'))r*=.9}
+      if(S===B.P){if(it===B.rightIt&&fOn('topsail'))r*=2;else if(it===B.leftIt&&fDn('topsail'))r*=.5;if(fDn('swivel')&&DEFS[it.k].tags.includes('C'))r*=.9}
       it.c+=dt*r;if(it.c>=it.s.cd){it.c-=it.s.cd;fire(S,F,it,i)}});
     S.traits.forEach(tr=>{const T=TRAITS[tr.k];if(!T.every)return;tr.t+=dt;if(tr.t>=T.every){tr.t-=T.every;act(tr.k,S,F)}});
   }
   B.bt+=dt;if(B.bt>=.5){B.bt-=.5;B.bodd=!B.bodd;for(const S of[B.P,B.E])if(S.burn>0){B.dot[S===B.P?'p':'e'].burn+=S.burn;hit(S,S.burn,'burn');if(!(S===B.E&&(B.cr.fire||0)>=2&&B.bodd))S.burn--;tick(S,'bu')}}
   B.pt+=dt;if(B.pt>=1){B.pt-=1;for(const S of[B.P,B.E]){if(S.poison>0&&!(S===B.P&&B.braceT>B.t)){let p=S.poison;if(S===B.P&&(B.cr.carp||0)>=2&&S.shield>0){const a=Math.min(S.shield,p);S.shield-=a;p-=a}S.hp-=p;B.dot[S===B.P?'p':'e'].poison+=p;if(p)pop(S.fel,'−'+p,'soft');tick(S,'po')}if(S.regen&&S.hp>0){S.hp=Math.min(S.max,S.hp+S.regen)}}
-    if(hasF('mermaid')&&B.P.hp>0&&B.P.hp<B.P.max/2){const h=Math.max(1,Math.round(B.P.max*.02));B.P.hp=Math.min(B.P.max,B.P.hp+h);pop(B.P.fel,'+'+h,'heal')}}
-  if(B.t>=B.bell){B.st+=dt;if(B.st>=.5){B.st-=.5;B.storm++;const ps=Math.max(0,(hasF('stormsail')?Math.ceil(B.storm/2):B.storm));B.dot.p.storm+=ps;B.dot.e.storm+=B.storm;hit(B.P,ps,'storm');hit(B.E,B.storm,'storm')}}
+    if(fOn('mermaid')&&B.P.hp>0&&B.P.hp<B.P.max/2){postFx('mermaid');const h=Math.max(1,Math.round(B.P.max*.02));B.P.hp=Math.min(B.P.max,B.P.hp+h);pop(B.P.fel,'+'+h,'heal')}}
+  if(B.t>=B.bell){B.st+=dt;if(B.st>=.5){B.st-=.5;B.storm++;const ps=Math.max(0,(fOn('stormsail')?(postFx('stormsail'),Math.ceil(B.storm/2)):B.storm));B.dot.p.storm+=ps;B.dot.e.storm+=B.storm;hit(B.P,ps,'storm');hit(B.E,B.storm,'storm')}}
   for(const S of[B.P,B.E])if(S.hp<=0&&hasT(S,'undying')&&!S.risen){S.risen=true;S.hp=S.max*.3;S.burn=0;S.poison=0;pop(S.fel,'It rises!')}
   if(B.P.hp<=0&&(B.cr.med||0)>=3&&!B.saved&&B.E.hp>0){B.saved=true;B.P.hp=1;pop(B.P.fel,'The surgeon saves you!','heal')}
   if(B.P.hp<=0||B.E.hp<=0)end(B.E.hp<=0&&B.P.hp>0);
@@ -203,7 +219,7 @@ function end(win){
   let head,lines=[],btn,next;
   if(win){
     A.beat[n.enemy]=1;if(k==='e')A.elites++;if(k==='b')A.bosses++;saveA();
-    const gold=(k==='b'?15+G.sea*10:k==='e'?10+depth:5+Math.floor(depth/2))+B.P.gold+(hasC('trade')?3:0)+(hasF('lion')?4:0);
+    const gold=(k==='b'?15+G.sea*10:k==='e'?10+depth:5+Math.floor(depth/2))+B.P.gold+(hasC('trade')?3:0)+(fOn('lion')?(postFx('lion'),4):0);
     G.gold+=gold;bump='gold';logL(`Beat the ${foe}. +${gold} gold.`);
     head=`You beat the ${foe}.`;lines.push(`+${gold} gold.`);
     if(k==='t'){btn='Take the spoils';next=()=>lootPick(n,chart)}
@@ -220,7 +236,8 @@ function end(win){
       const left=sideRoute(G.at);lines.push(`You limp back to ${node(G.at).name} to refit.${left===false?' No side route is left: only the boss lies ahead.':` A side route opens off the port: a bounty to fight and a fishing ground.${left?'':' It is the last one.'}`}`);btn=`Return to ${node(G.at).name}`;next=()=>port(G.at)}
     else{lines.push('You slip past and sail on, empty-handed.');btn='Back to the chart';next=chart}
   }
-  if(win&&G.crew){G.crew.forEach(c=>{const was=crewRank(c);c.xp++;const now=crewRank(c);
+  // every win teaches the crew; a hand whose station did its job this fight learns twice as much
+  if(win&&G.crew){G.crew.forEach(c=>{const was=crewRank(c);c.xp+=1+(c.post&&B.posts[c.post]?1:0);const now=crewRank(c);
     if(now>was){const C=CREW[c.k];lines.push(`${C.n} is now rank ${now}: ${C.crafts.map(x=>RANKS[x][now-2]).join(' ')}`);logL(`${C.n} made rank ${now}.`)}})}
   if(win&&!(k==='b'&&G.sea>=2)){const gain=k==='b'?3:k==='e'?2:1,was=renownLvl();G.renown=(G.renown||0)+gain;
     lines.push(`+${gain} renown.${renownLvl()>was?` Renown ${renownLvl()}! Make a captain's pick.`:''}`);

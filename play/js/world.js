@@ -76,26 +76,29 @@ const CHARTS={
 };
 const glyph=(k,cls)=>`<svg viewBox="0 0 30 30" class="${cls||'gl'}" aria-hidden="true">${CHARTS[k].g}</svg>`;
 
-/* ---------- fittings: parts of the ship itself. One per spot, each bends a rule with a trade-off. Bought from the shipwright or won from elites.
-   hp changes your health in fights. The rest is read by name where it applies (battle.js, port.js, state.js). ---------- */
+/* ---------- fittings: parts of the ship itself, each a station a crew member mans. One per spot, bought from the shipwright or won
+   from elites. A fitting works only while a hand is posted at it (c.post in G.crew); its downside (dn) goes when that hand has the
+   fitting's craft. shape (a hold slot, a berth) holds whoever is aboard; always:1 means the downside does too, unless the right
+   hand is posted. hp changes your health in fights (gains need a hand, losses are the downside). Effects are read by name where
+   they apply, through fitOn(k) and fitDown(k) (battle.js, port.js, state.js, chart.js). d is the full text, built below. ---------- */
 const SPOTS={hull:'Hull',sails:'Sails',guns:'Guns',head:'Figurehead'};
 const FITTINGS={
-  planks:{n:'Double Planking',spot:'hull',p:10,hp:40,d:'+40 health in fights. Boards up one hold slot, leaving 8.',g:'<path class="w" d="M3 7h24v7H3zM3 16h24v7H3z"/><circle class="k" cx="7" cy="10.5" r="1.1"/><circle class="k" cx="23" cy="10.5" r="1.1"/><circle class="k" cx="7" cy="19.5" r="1.1"/><circle class="k" cx="23" cy="19.5" r="1.1"/>'},
-  copper:{n:'Copper Sheathing',spot:'hull',p:10,hp:-20,d:'Burn and poison put on you are halved. −20 health in fights.',g:'<path class="w" d="M3 9h24c-2 10-7 15-12 17C10 24 5 19 3 9z"/><path d="M7 14h16M10 19h10" stroke-width="1.4"/>'},
-  ram:{n:'Iron Ram',spot:'hull',p:10,d:'Every fight opens with a ram: 10 damage, +5 per sea. You take 3.',g:'<path class="w" d="M3 11h15l9 4-9 4H3z"/><path d="M18 11v8M8 11v8" stroke-width="1.4"/>'},
-  ballast:{n:'Crew Quarters',spot:'hull',p:10,hp:-15,berth:1,d:'+1 crew berth. −15 health in fights.',g:'<path d="M3 8v6M27 8v6"/><path class="w" d="M3 10c5 8 19 8 24 0z"/><circle class="w" cx="15" cy="8" r="3"/>'},
-  lateen:{n:'Lateen Rig',spot:'sails',p:10,d:'Your leftmost item starts every fight charged. Your rightmost starts slowed for 3s.',g:'<path d="M15 3v24"/><path class="w" d="M5 23L25 4l-2 19z"/>'},
-  stormsail:{n:'Storm Canvas',spot:'sails',p:9,d:'The storm hurts you half as much. It arrives 5s sooner.',g:'<path d="M8 3v24"/><path class="w" d="M9 5h14l-3 16H9z"/><path d="M17 8l-4 5h4l-3 5" stroke-width="1.4"/>'},
-  topsail:{n:'Topgallants',spot:'sails',p:11,d:'Your rightmost item charges twice as fast. Your leftmost charges half as fast.',g:'<path d="M15 2v26"/><path class="w" d="M9 5h12v6H9zM6 13h18v9H6z"/>'},
-  studding:{n:'Studding Sails',spot:'sails',p:9,d:'See 1 more row through the fog. Your cargo starts every fight slowed for 1s.',g:'<path d="M15 3v24"/><path class="w" d="M10 6h10v15H10zM3 8h7v11H3zM20 8h7v11h-7z"/>'},
-  magazine:{n:'Powder Magazine',spot:'guns',p:11,d:'The first cannon you fire each fight fires twice. Burn put on you is 1 higher.',g:'<path class="w" d="M8 5h14c2 7 2 13 0 20H8c-2-7-2-13 0-20z"/><path d="M6 11h18M6 19h18" stroke-width="1.4"/>'},
-  chase:{n:'Chase Guns',spot:'guns',p:10,d:'Your cannons start every fight half charged. Your weapons start slowed for 2s.',g:'<path class="w" d="M3 12h16l7-2v9l-7-2H3z"/><circle class="w" cx="9" cy="22" r="4"/>'},
-  swivel:{n:'Swivel Mounts',spot:'guns',p:10,d:'Weapons in your leftmost and rightmost slots ignore shield. Your cannons charge 10% slower.',g:'<path d="M15 15v12M10 27h10"/><path class="w" d="M4 9h15l6-2v8l-6-2H4z"/>'},
-  grapeshot:{n:'Grapeshot',spot:'guns',p:10,d:'Your cannons also burn for 1. They deal 2 less damage.',g:'<circle class="k" cx="10" cy="10" r="3.2"/><circle class="k" cx="20" cy="10" r="3.2"/><circle class="k" cx="15" cy="17" r="3.2"/><circle class="k" cx="8" cy="22" r="2.6"/><circle class="k" cx="22" cy="22" r="2.6"/>'},
-  gull:{n:'Gull',spot:'head',p:12,hp:-10,d:'Your first crit each fight hastes all your cargo for 2s. −10 health in fights.',g:'<path d="M3 13c4-5 8-5 12 2 4-7 8-7 12-2"/><path class="w" d="M12 15c1 4 5 4 6 0"/>'},
-  mermaid:{n:'Mermaid',spot:'head',p:12,d:'Below half health, heal 2% of your health every second. Your healing items heal 2 less.',g:'<path class="w" d="M15 3c4 0 5 5 3 9l-2 6c3 1 7 3 8 8-4-1-6-1-9-3-3 2-5 2-9 3 1-5 5-7 8-8l-2-6c-2-4-1-9 3-9z"/>'},
-  kraken:{n:'Kraken',spot:'head',p:12,d:'Enemy cargo starts every fight slowed for 3s. Enemies have 10% more health.',g:'<path d="M5 27c0-9 7-11 11-15s3-9-2-9-4 6 1 6" stroke-width="2.4"/><path d="M13 27c2-6 9-7 12-10M20 27c1-3 4-4 6-5"/>'},
-  lion:{n:'Golden Lion',spot:'head',p:12,d:'+4 gold for every fight you win. Rerolls cost 1 more.',g:'<circle class="w" cx="15" cy="15" r="11"/><circle class="w" cx="15" cy="16" r="6"/><circle class="k" cx="13" cy="15" r="1"/><circle class="k" cx="17" cy="15" r="1"/><path d="M14 19h2" stroke-width="1.4"/>'}
+  planks:{n:'Double Planking',spot:'hull',p:10,hp:60,craft:'carp',shape:'Boards up one hold slot, leaving 8.',up:'+60 health in fights.',dn:'Your cargo charges 5% slower.',g:'<path class="w" d="M3 7h24v7H3zM3 16h24v7H3z"/><circle class="k" cx="7" cy="10.5" r="1.1"/><circle class="k" cx="23" cy="10.5" r="1.1"/><circle class="k" cx="7" cy="19.5" r="1.1"/><circle class="k" cx="23" cy="19.5" r="1.1"/>'},
+  copper:{n:'Copper Sheathing',spot:'hull',p:10,hp:-20,craft:'carp',up:'Burn and poison put on you are halved.',dn:'−20 health in fights.',g:'<path class="w" d="M3 9h24c-2 10-7 15-12 17C10 24 5 19 3 9z"/><path d="M7 14h16M10 19h10" stroke-width="1.4"/>'},
+  ram:{n:'Iron Ram',spot:'hull',p:10,craft:'steel',up:'Every fight opens with a ram: 10 damage, +5 per sea.',dn:'You take 3.',g:'<path class="w" d="M3 11h15l9 4-9 4H3z"/><path d="M18 11v8M8 11v8" stroke-width="1.4"/>'},
+  ballast:{n:'Crew Quarters',spot:'hull',p:10,hp:-15,berth:1,craft:'med',shape:'+1 crew berth.',dn:'−15 health in fights.',always:1,g:'<path d="M3 8v6M27 8v6"/><path class="w" d="M3 10c5 8 19 8 24 0z"/><circle class="w" cx="15" cy="8" r="3"/>'},
+  lateen:{n:'Lateen Rig',spot:'sails',p:10,craft:'sea',up:'Your leftmost item starts every fight charged.',dn:'Your rightmost starts slowed for 3s.',g:'<path d="M15 3v24"/><path class="w" d="M5 23L25 4l-2 19z"/>'},
+  stormsail:{n:'Storm Canvas',spot:'sails',p:9,craft:'sea',up:'The storm hurts you half as much.',dn:'It arrives 5s sooner.',g:'<path d="M8 3v24"/><path class="w" d="M9 5h14l-3 16H9z"/><path d="M17 8l-4 5h4l-3 5" stroke-width="1.4"/>'},
+  topsail:{n:'Topgallants',spot:'sails',p:11,craft:'sea',up:'Your rightmost item charges twice as fast.',dn:'Your leftmost charges half as fast.',g:'<path d="M15 2v26"/><path class="w" d="M9 5h12v6H9zM6 13h18v9H6z"/>'},
+  studding:{n:'Studding Sails',spot:'sails',p:9,craft:'sea',up:'See 1 more row through the fog.',dn:'Your cargo starts every fight slowed for 1s.',g:'<path d="M15 3v24"/><path class="w" d="M10 6h10v15H10zM3 8h7v11H3zM20 8h7v11h-7z"/>'},
+  magazine:{n:'Powder Magazine',spot:'guns',p:11,craft:'fire',up:'The first cannon you fire each fight fires twice.',dn:'Burn put on you is 1 higher.',g:'<path class="w" d="M8 5h14c2 7 2 13 0 20H8c-2-7-2-13 0-20z"/><path d="M6 11h18M6 19h18" stroke-width="1.4"/>'},
+  chase:{n:'Chase Guns',spot:'guns',p:10,craft:'gun',up:'Your cannons start every fight half charged.',dn:'Your weapons start slowed for 2s.',g:'<path class="w" d="M3 12h16l7-2v9l-7-2H3z"/><circle class="w" cx="9" cy="22" r="4"/>'},
+  swivel:{n:'Swivel Mounts',spot:'guns',p:10,craft:'gun',up:'Weapons in your leftmost and rightmost slots ignore shield.',dn:'Your cannons charge 10% slower.',g:'<path d="M15 15v12M10 27h10"/><path class="w" d="M4 9h15l6-2v8l-6-2H4z"/>'},
+  grapeshot:{n:'Grapeshot',spot:'guns',p:10,craft:'fire',up:'Your cannons also burn for 1.',dn:'They deal 2 less damage.',g:'<circle class="k" cx="10" cy="10" r="3.2"/><circle class="k" cx="20" cy="10" r="3.2"/><circle class="k" cx="15" cy="17" r="3.2"/><circle class="k" cx="8" cy="22" r="2.6"/><circle class="k" cx="22" cy="22" r="2.6"/>'},
+  gull:{n:'Gull',spot:'head',p:12,hp:-10,craft:'steel',up:'Your first crit each fight hastes all your cargo for 2s.',dn:'−10 health in fights.',g:'<path d="M3 13c4-5 8-5 12 2 4-7 8-7 12-2"/><path class="w" d="M12 15c1 4 5 4 6 0"/>'},
+  mermaid:{n:'Mermaid',spot:'head',p:12,craft:'med',up:'Below half health, heal 2% of your health every second.',dn:'Your healing items heal 2 less.',g:'<path class="w" d="M15 3c4 0 5 5 3 9l-2 6c3 1 7 3 8 8-4-1-6-1-9-3-3 2-5 2-9 3 1-5 5-7 8-8l-2-6c-2-4-1-9 3-9z"/>'},
+  kraken:{n:'Kraken',spot:'head',p:12,craft:'alch',up:'Enemy cargo starts every fight slowed for 3s.',dn:'Enemies have 10% more health.',g:'<path d="M5 27c0-9 7-11 11-15s3-9-2-9-4 6 1 6" stroke-width="2.4"/><path d="M13 27c2-6 9-7 12-10M20 27c1-3 4-4 6-5"/>'},
+  lion:{n:'Golden Lion',spot:'head',p:12,craft:'alch',up:'+4 gold for every fight you win.',dn:'Rerolls cost 1 more.',g:'<circle class="w" cx="15" cy="15" r="11"/><circle class="w" cx="15" cy="16" r="6"/><circle class="k" cx="13" cy="15" r="1"/><circle class="k" cx="17" cy="15" r="1"/><path d="M14 19h2" stroke-width="1.4"/>'}
 };
 /* ---------- crew: hired at a port tavern, they live on deck and let your cargo use their crafts.
    Rank grows with fights won and opens new rules in their crafts (RANKS). Wages are paid at every new port. ---------- */
@@ -153,6 +156,7 @@ const PERKS={
   prize:{n:'Prize Court',d:'Spoils offer 4 pieces of cargo instead of 3.'}
 };
 const STAR='<svg viewBox="0 0 30 30" class="gl" aria-hidden="true"><path class="w" d="M15 3l3.6 7.4 8.1 1.1-5.9 5.7 1.4 8L15 21.4l-7.2 3.8 1.4-8-5.9-5.7 8.1-1.1z"/></svg>';
+Object.values(FITTINGS).forEach(F=>F.d=[F.shape,F.up,F.dn].filter(Boolean).join(' '));
 const fitGlyph=(k,cls)=>`<svg viewBox="0 0 30 30" class="${cls||'gl'}" aria-hidden="true">${FITTINGS[k].g}</svg>`;
 
 /* ---------- the cartographer's story ---------- */

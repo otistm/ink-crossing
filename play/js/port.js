@@ -30,7 +30,7 @@ function port(id,view){
     // the wright's own speciality goes on the bench first
     const mine=pool.filter(k=>FITTINGS[k].spot===WRIGHTS[wrightOf(id)].spot);if(mine.length){const k=mine[ri(r,mine.length)];S.fits.push(k);pool.splice(pool.indexOf(k),1)}
     while(S.fits.length<(hasP('wright')?3:2)&&pool.length)S.fits.push(pool.splice(ri(r,pool.length),1)[0])}
-  const rr=S.reroll+(hasF('lion')?1:0);
+  const rr=S.reroll+(fitDown('lion')?1:0);
   // the tavern's hires for this visit, seeded like the market
   if(!G.tut&&!S.tavern){const r=RNG(G.seed,'tavern',id,G.shopVisit||0),pool=Object.keys(CREW).filter(k=>!(G.crew||[]).some(c=>c.k===k));S.tavern=[];
     while(S.tavern.length<(hasP('recruiter')?4:3)&&pool.length)S.tavern.push(pool.splice(ri(r,pool.length),1)[0])}
@@ -75,7 +75,7 @@ function port(id,view){
     if(G.gold<f.p)return toast(`Need ${f.p-G.gold} more gold`);
     if(!canEquip(k))return toast('Double Planking boards up a slot. Sell something to make room first.');
     const from=(app.querySelector(`.fitgood[data-w="${i}"] .o-icon`)||b).getBoundingClientRect(),old=fitIn(f.spot);
-    G.gold-=f.p;const back=equip(k);S.fits[i]=null;PV.wsel=null;bump='gold';save();toast(`Fitted ${f.n}${back?`. Sold the old one for ${back} gold`:''}`);port(id,view);fitFly(k,from,old);setTimeout(()=>coach('fitted'),G.tut?2600:0)});
+    G.gold-=f.p;const back=equip(k);S.fits[i]=null;PV.wsel=null;bump='gold';save();{const h=handAt(f.spot);toast(`Fitted ${f.n}${back?`. Sold the old one for ${back} gold`:''}. ${h?`${CREW[h.k].n} mans it`:'Post a hand at it on your ship card'}`)}port(id,view);fitFly(k,from,old);setTimeout(()=>coach('fitted'),G.tut?2600:0)});
   app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const n=b.dataset.r==='all'?repairable():1;
     if(n<1||G.gold<n*repairCost())return toast(G.hull>=HULL_MAX?'The hull is already sound.':`Need ${n*repairCost()-G.gold} more gold`);
     const was=G.hull;G.gold-=n*repairCost();G.hull+=n;bump='hull';logL(`Paid the shipwright ${n*repairCost()} gold to repair ${n} hull.`);save();port(id,view);repairFx(was,G.hull)});
@@ -105,7 +105,7 @@ function port(id,view){
    out on the table below; tap one and it lifts while the seller tells you about it, with the Buy button. */
 /* the market just restocked (Show me more): the new goods thump down onto the table instead of popping in */
 let restock=false;
-function stallHTML(S,id,anim){const sk=sellerOf(id),P=SELLERS[sk],rr=S.reroll+(hasF('lion')?1:0);
+function stallHTML(S,id,anim){const sk=sellerOf(id),P=SELLERS[sk],rr=S.reroll+(fitDown('lion')?1:0);
   let sel=PV.msel;if(sel==null||!S.offers[sel])sel=PV.mbought?-1:S.offers.findIndex(Boolean);
   const o=sel>=0?S.offers[sel]:null;
   const goods=S.offers.map((g,i)=>{if(!g)return`<span class="good gone" aria-label="Sold"><span class="o-icon"></span><span class="ptag">sold</span></span>`;
@@ -206,7 +206,7 @@ function repairFx(before,after){document.querySelectorAll('.hullcard').forEach(c
    off if there was one), three hammer blows ring out in ink sparks, and "Fitted!" rises. Tap to hurry it. */
 function fitFly(k,from,old){if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
   const F=FITTINGS[k],fx=document.createElement('div');fx.className='fitfx';
-  fx.innerHTML=`<div class="ff-ship">${shipArt(G.ship,'ff-art')}</div><p class="ff-cap"><b>${F.n}</b> fitted to the ${SPOTS[F.spot].toLowerCase()}</p>`;
+  fx.innerHTML=`<div class="ff-ship">${shipArt(G.ship,'ff-art')}</div><p class="ff-cap"><b>${F.n}</b> fitted to the ${SPOTS[F.spot].toLowerCase()}${handAt(F.spot)?`<br>${CREW[handAt(F.spot).k].n} mans it`:''}</p>`;
   document.body.appendChild(fx);
   const close=()=>{if(!fx.isConnected)return;fx.classList.add('gone');setTimeout(()=>fx.remove(),450)};
   fx.addEventListener('click',close);
@@ -340,7 +340,7 @@ function wrightHTML(S,id,anim){const wk=wrightOf(id),W=WRIGHTS[wk],all=repairabl
   else{const k=S.fits[sel],f=FITTINGS[k],old=fitIn(f.spot),ok=canEquip(k),poor=G.gold<f.p;
     talk=`<div class="talk" id="talk"><p class="say">“${!ok?W.slot:poor?W.broke:W.say[f.spot]}”</p>
       <p class="who"><b>${f.n}</b><span class="chipc">${SPOTS[f.spot]}</span>${f.hp?`<span class="chipc">${f.hp>0?'+':'−'}${Math.abs(f.hp)} health</span>`:''}</p>
-      <p class="desc">${f.d}${old?` <span class="soft">Replaces your ${FITTINGS[old].n}, which sells for ${Math.floor(FITTINGS[old].p/2)}.</span>`:''}</p>
+      <p class="desc">${fitDesc(k)}${old?` <span class="soft">Replaces your ${FITTINGS[old].n}, which sells for ${Math.floor(FITTINGS[old].p/2)}.</span>`:''}${fitCraftLine(k)}</p>
       <button class="buy" data-fit="${sel}" ${poor||!ok?'aria-disabled="true"':''}>Fit for ${f.p} gold</button></div>`}
   // the back wall: a pegboard of saws, mallets, coiled rope and planks, tiled so it fills any width
   const tools=`<pattern id="tools" width="150" height="70" patternUnits="userSpaceOnUse"><g fill="#FBF5E8" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">

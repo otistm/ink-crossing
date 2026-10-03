@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.37.0
+- Every fitting is now a station that a crew member mans. Nobody at it, it does nothing. Anyone at it, it works as before, downside and all. A hand with the right craft (Gunnery for Swivel Mounts, Medicine for the Mermaid, Seamanship for the sails...) drops the downside, which shows struck out.
+- Post your hands from the ship card: each fitting shows who mans it and a row of faces to tap. Buying a fitting or hiring a hand posts someone sensible straight away; move them whenever you like outside a fight.
+- In fights your crew stand on your ship's card, each posted hand wearing their fitting's badge. They jump when their station does its work: the ram, the gull's cry, the mermaid's healing, a swivel gun punching through shield.
+- A hand whose station did its job in a fight you win learns twice as much from it, so posted crew rank up faster.
+- Double Planking gives +60 health (was +40), so it's worth the slot it boards up. Its new downside is that your cargo charges 5% slower, which a Carpentry hand drops. Crew Quarters keep their −15 health unless a Medicine hand is posted there.
+- Voyages in progress keep their fittings: anyone idle is posted to them when you continue.
+
 ## 0.36.0
 - Losing to the bandits at cards now costs the most valuable half of your hold (rounded up) instead of all of it, plus half your hull as before. A captain who loses can still fight their way back.
 - The Wren's starting kit at Gullhaven now has a second blade: the Jib Sail, the Rapier and a Sword Cane, all worked by the hands the Guild pays for. Her first fight used to be lost most of the time; now it's won about 9 times in 10, like the other ships.

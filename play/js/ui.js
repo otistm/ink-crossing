@@ -148,8 +148,19 @@ function crewRows(edit){const cs=G.crew||[];
       ${edit?`<button class="linkbtn" data-dis="${i}">Dismiss</button>`:''}</div>`}).join('')+
     Array.from({length:Math.max(0,berths()-cs.length)},()=>`<div class="crewrow empty"><span class="fitnone"></span><div><b>Empty berth</b><span class="soft">Hire crew at a port tavern.</span></div></div>`).join('')}
 /* ---------- your ship: trait and fittings ---------- */
-function fitRows(){return Object.keys(SPOTS).map(s=>{const k=fitIn(s);
-  return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${FITTINGS[k].d}</span>`:''}</div></div>`}).join('')}
+function fitRows(){const live=!app.querySelector('.battle');return Object.keys(SPOTS).map(s=>{const k=fitIn(s);
+  return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${fitDesc(k,s)}</span>`:''}</div>${stationHTML(s,live)}</div>`}).join('')}
+/* a fitting's text. On your ship (spot given): faded while nobody mans it, the downside struck out when the right hand does. */
+function fitDesc(k,spot){const F=FITTINGS[k],c=spot&&handAt(spot),sk=skilled(c,k),idle=spot&&!c;
+  const part=(t,cls)=>t?`<span class="${cls}">${t}</span> `:'';
+  return(part(F.shape,'fsh')+part(F.up,'fup'+(idle?' off':''))+part(F.dn,'fdn'+(sk||idle&&!F.always?' off':''))).trim()}
+/* in the shipwright's bubble and the elite's pick: who it needs */
+const fitCraftLine=k=>{const F=FITTINGS[k];return`<span class="fcraft">${craftIcon(F.craft)}Needs a crew member posted at it. One with ${CRAFTS[F.craft]} drops the downside.</span>`};
+/* who mans a fitting, and the faces to tap to post a hand there (tap the one posted to stand them down) */
+function stationHTML(s,live){const k=fitIn(s);if(!k)return'';const c=handAt(s),F=FITTINGS[k],cs=G.crew||[];
+  const msg=!c?(F.always?'Nobody is posted here, so only the downside counts.':'Nobody is posted here, so it does nothing.'):skilled(c,k)?`${CREW[c.k].n} mans it. ${CRAFTS[F.craft]} drops the downside.`:`${CREW[c.k].n} mans it. A hand with ${CRAFTS[F.craft]} would drop the downside.`;
+  return`<div class="station${c?'':' idle'}"><span class="st-msg">${craftIcon(F.craft)}${msg}</span>${cs.length?`<span class="st-hands">${cs.map((h,i)=>{const on=h===c,fit=skilled(h,k),at=!on&&h.post&&fitIn(h.post);
+    return`<button type="button" class="st-h${on?' on':''}${fit?' fit':''}" data-post="${s}" data-i="${i}" ${live?'':'disabled'} aria-pressed="${on}" title="${on?`Stand ${CREW[h.k].n} down`:`Post ${CREW[h.k].n} here${at?`, leaving the ${FITTINGS[at].n}`:''}`}">${crewFace(h.k)}${fit?`<span class="st-cr">${craftIcon(F.craft)}</span>`:''}</button>`}).join('')}</span>`:'<span class="soft">Hire crew to man it.</span>'}</div>`}
 function renownHTML(){const n=G.renown||0,lv=renownLvl(),nx=renownNext(),prev=lv?RENOWN[lv-1]:0,pc=nx?Math.round((n-prev)/(nx-prev)*100):100;
   return`<div class="renown"><div class="rn-head"><b>Renown ${lv}</b><span class="soft">${nx?`${n} of ${nx} to the next level`:`${n}, the top level`}</span></div>
     <div class="rn-bar" aria-hidden="true"><span style="width:${pc}%"></span></div>
@@ -164,7 +175,7 @@ function shipSheet(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait];
     ${renownHTML()}
     <h3 class="shead">Fittings</h3>
     <div class="fitlist">${fitRows()}</div>
-    <p class="gloss">${G.fit&&Object.values(G.fit).some(Boolean)?'Fitting a new part in a spot sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one.'}</p>
+    <p class="gloss">${G.fit&&Object.values(G.fit).some(Boolean)?'Every fitting is a station: tap a face to post that hand there. Fitting a new part sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one. Each needs a crew member posted at it.'}</p>
     <button class="primary" data-a="c">Close</button>`);
   shipBind(ov)}
 /* big screens: the ship card is built for the space. The ship itself is the hero, drawn large on the water with its four fittings
@@ -180,7 +191,8 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
   const callout=s=>{const k=fitIn(s),F=k&&FITTINGS[k];
     return`<div class="sc-fit${k?'':' empty'}" data-spot="${s}"><span class="sc-lbl">${SPOTS[s]}</span>
       <div class="sc-fithead">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<b>${F?F.n:'Empty'}</b></div>
-      <p>${F?F.d:`Any port's shipwright can fit ${SPOTS[s].toLowerCase()==='figurehead'?'a figurehead':SPOTS[s].toLowerCase()==='guns'?'guns':`a ${SPOTS[s].toLowerCase()} fitting`}.`}</p></div>`};
+      <p>${F?fitDesc(k,s):`Any port's shipwright can fit ${SPOTS[s].toLowerCase()==='figurehead'?'a figurehead':SPOTS[s].toLowerCase()==='guns'?'guns':`a ${SPOTS[s].toLowerCase()} fitting`}.`}</p>
+      ${k?stationHTML(s,!app.querySelector('.battle')):''}</div>`};
   const crew=cs.map((c,i)=>{const C=CREW[c.k],rk=crewRank(c),nx2=rankXP()[rk];
       return`<div class="sc-hand"><span class="sc-face">${crewFace(c.k)}</span><div class="sc-who"><b>${C.n}</b><span class="sc-crafts">${crewCrafts1(c.k)}</span>
         <span class="soft">Rank ${rk}${nx2!=null?`, ${nx2-c.xp} more win${nx2-c.xp===1?'':'s'} to rank ${rk+1}`:''}</span>
@@ -197,7 +209,7 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
       <div class="sc-fits right">${callout('sails')}${callout('guns')}</div>
       <svg class="sc-lines" aria-hidden="true"></svg>
     </div>
-    <p class="sc-note soft">${G.fit&&Object.values(G.fit).some(Boolean)?'Fitting a new part in a spot sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one.'}</p>
+    <p class="sc-note soft">${G.fit&&Object.values(G.fit).some(Boolean)?'Every fitting is a station: tap a face to post that hand there. Fitting a new part sells the old one for half. Losing a fight tears one away.':'The shipwright in any port sells fittings, and elites sometimes carry one. Each needs a crew member posted at it.'}</p>
     <div class="sc-foot"><section class="sc-crew"><h3 class="shead">Crew</h3><div class="sc-hands">${crew}</div></section>
       <section class="sc-picks"><h3 class="shead">Captain's picks</h3>${picks}</section></div>`,true,'shipview');
   // leader lines from each fitting to its part of the ship, drawn once the card is laid out (and again if the window changes)
@@ -211,7 +223,12 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
 /* the ship card's buttons: order triggers, dismissing crew, closing */
 function shipBind(ov){
   ov.querySelectorAll('[data-ord]').forEach(s=>s.onchange=()=>{G.orders=Object.assign({},G.orders,{[s.dataset.ord]:s.value});save();toast(`${PERKS[s.dataset.ord].n} fires ${WHEN[s.value]}`)});
-  ov.addEventListener('click',e=>{const d=e.target.closest('[data-dis]');if(d){const c=G.crew[+d.dataset.dis];
+  ov.addEventListener('click',e=>{const p=e.target.closest('[data-post]');
+    if(p&&!p.disabled){const i=+p.dataset.i,s=p.dataset.post,c=G.crew[i],on=c.post===s;postHand(i,on?null:s);save();
+      toast(on?`${CREW[c.k].n} stands down`:`${CREW[c.k].n} mans the ${FITTINGS[fitIn(s)].n}`);
+      const sh=ov.querySelector('.sheet'),y=sh&&sh.scrollTop;ov.remove();shipSheet();const n=document.querySelector('.overlay:last-child .sheet');if(n&&y)n.scrollTop=y;
+      if(app.querySelector('.map'))chart();else if(app.querySelector('#leave'))port(G.at);return}
+    const d=e.target.closest('[data-dis]');if(d){const c=G.crew[+d.dataset.dis];
       if(d.dataset.sure){G.crew.splice(+d.dataset.dis,1);logL(`Let ${CREW[c.k].n} go.`);save();ov.remove();toast(`${CREW[c.k].n} leaves the ship`);if(app.querySelector('#leave'))port(G.at);else chart();return}
       d.dataset.sure=1;d.textContent='Tap again to dismiss';return}
     if(e.target===ov||e.target.closest('[data-a]'))ov.remove()});ov.querySelector('[data-a]').focus()}

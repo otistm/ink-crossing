@@ -1539,3 +1539,38 @@ b.now{font-weight:800}
 body.hovtalk .talk:not(.quiet){opacity:0;visibility:hidden;transform:translateY(6px);transition:opacity .16s,transform .16s,visibility 0s .16s}
 body.hovtalk #app.talkon .talk:not(.quiet){opacity:1;visibility:visible;transform:none;transition:opacity .16s,transform .2s var(--spring),visibility 0s}
 body.hovtalk #app.talkon .barroom.sided .patron:not(.sel) .bust{filter:url(#tfade)}
+
+/* ---------- crew at their stations (battle.js deckHTML) ---------- */
+.fline{display:flex;align-items:center;gap:8px;margin-top:2px}
+.fline .traits{flex:1;min-width:0;margin-top:0}
+.fdeck{display:flex;gap:4px;flex:none}
+.dk{position:relative;width:28px;height:28px;flex:none}
+.dkf{display:grid;place-items:center;width:100%;height:100%;border:2px solid var(--line);border-radius:50%;overflow:hidden;background:var(--paper)}
+.dkf svg{width:100%;height:100%}
+.dk:not(.post) .dkf{border-color:var(--soft)}
+.dkb{position:absolute;right:-5px;bottom:-5px;width:16px;height:16px;border:1.5px solid var(--line);border-radius:50%;background:var(--mustard-p,var(--paper));display:grid;place-items:center}
+.dkb svg{width:12px;height:12px}
+.dk.fire{animation:postfire .55s var(--spring)}
+.dk.fire .dkb{background:var(--mustard)}
+@keyframes postfire{0%{transform:translateY(0) scale(1)}25%{transform:translateY(2px) scale(1.12,.86)}55%{transform:translateY(-9px) scale(.92,1.12)}100%{transform:translateY(0) scale(1)}}
+@media (prefers-reduced-motion:reduce){.dk.fire{animation:none}}
+.dkb .gl,.station .gl,.sc-fit .st-h .gl{stroke:var(--line);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.dkb .gl .w{fill:var(--paper)}.dkb .gl .k{fill:var(--ink);stroke:none}
+/* the station under each fitting on the ship card: who mans it, and the hands to post */
+.fitrow .station{grid-column:1/-1}
+.station{display:grid;gap:6px;border-top:1.5px dashed var(--soft);padding-top:7px;margin-top:2px}
+.st-msg{display:flex;gap:6px;align-items:flex-start;font-size:12.5px;font-weight:800;line-height:1.3}
+.st-msg .cri{flex:none;width:15px;height:15px;margin-top:1px}
+.station.idle .st-msg{color:var(--brick)}
+.st-hands{display:flex;gap:6px;flex-wrap:wrap}
+.st-h{position:relative;width:36px;height:36px;padding:0;border:2px solid var(--soft);border-radius:50%;background:var(--paper);display:grid;place-items:center;transition:transform .22s var(--spring)}
+.st-h>svg{width:100%;height:100%;border-radius:50%;overflow:hidden}
+.st-h.on{border:2.5px solid var(--line);background:var(--mustard-p);box-shadow:2px 2px 0 var(--ink)}
+.st-h:not(:disabled):active{transform:scale(.9)}
+.st-h:disabled{opacity:.6}
+.st-cr{position:absolute;right:-5px;bottom:-4px;width:17px;height:17px;border:1.5px solid var(--line);border-radius:50%;background:var(--paper);display:grid;place-items:center}
+.st-cr .cri{width:11px;height:11px}
+.fup.off,.fdn.off{text-decoration:line-through;text-decoration-thickness:1.5px;color:var(--soft)}
+.fdn{color:var(--brick)}
+.fcraft{display:flex;gap:6px;align-items:flex-start;margin-top:6px;font-size:12.5px;font-weight:800}
+.fcraft .cri{flex:none;width:15px;height:15px;margin-top:1px}
