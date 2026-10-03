@@ -143,13 +143,17 @@ const crewCrafts1=k=>CREW[k].crafts.map(c=>`<span class="chipc">${craftIcon(c)}$
 const pips=(n,max,cls)=>`<span class="${cls}" aria-label="${n} of ${max}">${Array.from({length:max},(_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}</span>`;
 function crewRows(edit){const cs=G.crew||[];
   return cs.map((c,i)=>{const C=CREW[c.k],rk=crewRank(c),nx=rankXP()[rk];
-    return`<div class="crewrow"><span class="o-icon crewic">${crewFace(c.k)}</span><div><b>${C.n}</b>${crewCrafts1(c.k)}
+    return`<div class="crewrow"><span class="o-icon crewic">${crewFace(c.k)}</span><div><b>${C.n}</b>${crewCrafts1(c.k)}${postLine(c)}
       <span class="soft">Rank ${rk}${nx!=null?`, ${nx-c.xp} more win${nx-c.xp===1?'':'s'} to rank ${rk+1}`:''}. Wage ${wageOf(c.k)}. Morale ${pips(c.m,3,'mor')}</span></div>
       ${edit?`<button class="linkbtn" data-dis="${i}">Dismiss</button>`:''}</div>`}).join('')+
     Array.from({length:Math.max(0,berths()-cs.length)},()=>`<div class="crewrow empty"><span class="fitnone"></span><div><b>Empty berth</b><span class="soft">Hire crew at a port tavern.</span></div></div>`).join('')}
+/* the face of whoever mans a fitting, or an empty dashed ring */
+function postFace(s){const c=handAt(s);return c?`<span class="pface" title="${CREW[c.k].n} mans it">${crewFace(c.k)}</span>`:'<span class="pface none" title="Nobody mans it"><i>?</i></span>'}
+/* where a crew member stands: the fitting they man, or the deck */
+function postLine(c){const k=c.post&&fitIn(c.post);return k?`<span class="atpost${skilled(c,k)?' fit':''}">${fitGlyph(k)}At the ${FITTINGS[k].n}${skilled(c,k)?', no downside':''}</span>`:'<span class="atpost idle">On deck, no station</span>'}
 /* ---------- your ship: trait and fittings ---------- */
 function fitRows(){const live=!app.querySelector('.battle');return Object.keys(SPOTS).map(s=>{const k=fitIn(s);
-  return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${fitDesc(k,s)}</span>`:''}</div>${stationHTML(s,live)}</div>`}).join('')}
+  return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${fitDesc(k,s)}</span>`:''}</div>${k?postFace(s):''}${stationHTML(s,live)}</div>`}).join('')}
 /* a fitting's text. On your ship (spot given): faded while nobody mans it, the downside struck out when the right hand does. */
 function fitDesc(k,spot){const F=FITTINGS[k],c=spot&&handAt(spot),sk=skilled(c,k),idle=spot&&!c;
   const part=(t,cls)=>t?`<span class="${cls}">${t}</span> `:'';
@@ -190,11 +194,11 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
   const stat=(lbl,big,small,extra)=>`<div class="sc-stat"><span class="sc-lbl">${lbl}</span><b>${big}</b>${small?`<span class="soft">${small}</span>`:''}${extra||''}</div>`;
   const callout=s=>{const k=fitIn(s),F=k&&FITTINGS[k];
     return`<div class="sc-fit${k?'':' empty'}" data-spot="${s}"><span class="sc-lbl">${SPOTS[s]}</span>
-      <div class="sc-fithead">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<b>${F?F.n:'Empty'}</b></div>
+      <div class="sc-fithead">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<b>${F?F.n:'Empty'}</b>${k?postFace(s):''}</div>
       <p>${F?fitDesc(k,s):`Any port's shipwright can fit ${SPOTS[s].toLowerCase()==='figurehead'?'a figurehead':SPOTS[s].toLowerCase()==='guns'?'guns':`a ${SPOTS[s].toLowerCase()} fitting`}.`}</p>
       ${k?stationHTML(s,!app.querySelector('.battle')):''}</div>`};
   const crew=cs.map((c,i)=>{const C=CREW[c.k],rk=crewRank(c),nx2=rankXP()[rk];
-      return`<div class="sc-hand"><span class="sc-face">${crewFace(c.k)}</span><div class="sc-who"><b>${C.n}</b><span class="sc-crafts">${crewCrafts1(c.k)}</span>
+      return`<div class="sc-hand"><span class="sc-face">${crewFace(c.k)}</span><div class="sc-who"><b>${C.n}</b><span class="sc-crafts">${crewCrafts1(c.k)}</span>${postLine(c)}
         <span class="soft">Rank ${rk}${nx2!=null?`, ${nx2-c.xp} more win${nx2-c.xp===1?'':'s'} to rank ${rk+1}`:''}</span>
         <span class="soft">Wage ${wageOf(c.k)}. Morale ${pips(c.m,3,'mor')}</span></div>${edit?`<button class="linkbtn" data-dis="${i}">Dismiss</button>`:''}</div>`}).join('')
     +Array.from({length:Math.max(0,berths()-cs.length)},()=>`<div class="sc-hand empty"><span class="sc-face"></span><div class="sc-who"><b>Empty berth</b><span class="soft">Hire crew at a port tavern.</span></div></div>`).join('');
@@ -217,7 +221,11 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
     svg.setAttribute('viewBox',`0 0 ${H.width} ${H.height}`);
     svg.innerHTML=[...hero.querySelectorAll('.sc-fit')].map(el=>{const r=el.getBoundingClientRect(),[ax,ay]=P[el.dataset.spot],x=A.left-H.left+ax/120*A.width,y=A.top-H.top+ay/110*A.height,
       left=el.parentElement.classList.contains('left'),sx=(left?r.right:r.left)-H.left,sy=r.top-H.top+22,mx=sx+(left?28:-28);
-      return`<path d="M${sx} ${sy}H${mx}L${x} ${y}"${el.classList.contains('empty')?' stroke-dasharray="4 4"':''}/><circle cx="${x}" cy="${y}" r="4.5"/>`}).join('')};
+      return`<path d="M${sx} ${sy}H${mx}L${x} ${y}"${el.classList.contains('empty')?' stroke-dasharray="4 4"':''}/><circle cx="${x}" cy="${y}" r="4.5"/>`}).join('');
+    // whoever mans each fitting stands on the ship at its spot
+    hero.querySelectorAll('.sc-onship').forEach(e=>e.remove());
+    Object.keys(SPOTS).forEach(s=>{const c=fitIn(s)&&handAt(s);if(!c)return;const[ax,ay]=P[s],d=document.createElement('span');d.className='sc-onship'+(skilled(c,fitIn(s))?' fit':'');d.title=`${CREW[c.k].n} at the ${FITTINGS[fitIn(s)].n}`;
+      d.innerHTML=crewFace(c.k);d.style.left=(A.left-H.left+ax/120*A.width)/H.width*100+'%';d.style.top=(A.top-H.top+ay/110*A.height)/H.height*100+'%';hero.appendChild(d)})};
   requestAnimationFrame(lay);addEventListener('resize',lay);
   shipBind(ov)}
 /* the ship card's buttons: order triggers, dismissing crew, closing */

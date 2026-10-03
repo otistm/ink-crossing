@@ -243,6 +243,11 @@ function hireFly(k,from){const strip=app.querySelectorAll('#crewbar .cb-c:not(.e
 /* the tavern: everyone looking for work sits at the bar. Tap one to have a word; they make their pitch below. */
 /* the tavern: the bar scene fills the room. Everyone looking for work sits at the counter; tap one and a speech bubble
    floats over the scene just under them, pointing up, with their pitch and a Hire button. layBar() fits it all to the space. */
+/* the stations a hand mans with no downside (fittings of their crafts). Ones on your ship come first, marked, with a nudge if nobody mans them. */
+function mansHTML(k){const fs=Object.keys(FITTINGS).filter(f=>CREW[k].crafts.includes(FITTINGS[f].craft)).sort((x,y)=>hasF(y)-hasF(x));
+  const idle=fs.filter(f=>hasF(f)&&!handAt(FITTINGS[f].spot)),open=fs.filter(f=>hasF(f)&&handAt(FITTINGS[f].spot)&&!skilled(handAt(FITTINGS[f].spot),f));
+  return`<div class="mans"><span class="mans-l">Mans with no downside</span><span class="mans-fits">${fs.map(f=>`<span class="mfit${hasF(f)?' have':''}">${fitGlyph(f)}${FITTINGS[f].n}</span>`).join('')}</span>
+    ${idle.length?`<span class="mans-tip">Nobody mans your ${idle.map(f=>FITTINGS[f].n).join(' or ')}. They would.</span>`:open.length?`<span class="mans-tip">Would take the downside off your ${open.map(f=>FITTINGS[f].n).join(' and ')}.</span>`:''}</div>`}
 function tavernHTML(S){const full=(G.crew||[]).length>=berths(),n=S.tavern.length;
   let sel=PV.tsel;if(sel==null||!S.tavern[sel])sel=S.tavern.findIndex(Boolean);
   // the hands sit in 0..PW; the room runs on far past them on every side, so the scene can fill any shape
@@ -271,6 +276,7 @@ function tavernHTML(S){const full=(G.crew||[]).length>=berths(),n=S.tavern.lengt
     ${C?`<div class="talk" id="talk"><p class="say">“${C.say||'Looking for a berth, captain.'}”</p>
       <p class="who"><b>${C.n}</b> ${crewCrafts1(k)}</p>
       <p class="terms">Lets your cargo use ${C.crafts.map(c=>`<b>${CRAFTS[c]}</b>`).join(' and ')}. Wage ${wageOf(k)} gold a port.</p>
+      ${mansHTML(k)}
       <details class="ranks"><summary>How they grow</summary>${[2,3].map(r=>`<p><b>Rank ${r}</b>, after ${rankXP()[r-1]} wins: ${C.crafts.map(c=>RANKS[c][r-2]).join(' ')}</p>`).join('')}</details>
       <button class="buy" data-hire="${sel}" ${full||G.gold<feeOf(k)?'aria-disabled="true"':''}>${full?'Your deck is full':feeOf(k)?`Hire for ${feeOf(k)} gold`:'Sign on, the Guild pays'}</button></div>`
       :'<p class="talk quiet">Everyone here has signed on. The bar is quiet.</p>'}

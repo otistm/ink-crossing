@@ -1574,3 +1574,27 @@ body.hovtalk #app.talkon .barroom.sided .patron:not(.sel) .bust{filter:url(#tfad
 .fdn{color:var(--brick)}
 .fcraft{display:flex;gap:6px;align-items:flex-start;margin-top:6px;font-size:12.5px;font-weight:800}
 .fcraft .cri{flex:none;width:15px;height:15px;margin-top:1px}
+/* who mans each fitting: their face beside it on the ship card, and their station under their name */
+.fitrow{grid-template-columns:42px 1fr auto}
+.pface{width:38px;height:38px;flex:none;border:2.5px solid var(--line);border-radius:50%;overflow:hidden;background:var(--mustard-p);display:grid;place-items:center}
+.pface svg{width:100%;height:100%}
+.pface.none{border:2px dashed var(--brick);background:var(--paper);color:var(--brick);font:800 16px var(--ui,inherit)}
+.pface.none i{font-style:normal}
+.sc-fithead .pface{margin-left:auto;width:34px;height:34px}
+.atpost{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800;margin:3px 0 1px}
+.atpost .gl{width:18px;height:18px;flex:none;stroke:var(--line);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.atpost .gl .w{fill:var(--paper)}.atpost .gl .k{fill:var(--ink);stroke:none}
+.atpost.fit{color:var(--ink)}
+.atpost.idle{color:var(--soft)}
+.sc-onship{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border:2.5px solid var(--line);border-radius:50%;overflow:hidden;background:var(--paper);box-shadow:2px 2px 0 var(--ink);z-index:2;pointer-events:none}
+.sc-onship.fit{background:var(--mustard-p)}
+.sc-onship svg{width:100%;height:100%}
+/* the tavern bubble: the stations this hand mans with no downside */
+.mans{display:grid;gap:4px;margin:2px 0 6px}
+.mans-l{font-size:11.5px;font-weight:800;color:var(--soft)}
+.mans-fits{display:flex;flex-wrap:wrap;gap:4px}
+.mfit{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;border:1.5px solid var(--line);border-radius:99px;padding:1px 8px 1px 3px;background:var(--paper)}
+.mfit.have{background:var(--mustard-p);border-width:2px}
+.mfit .gl{width:16px;height:16px;stroke:var(--line);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.mfit .gl .w{fill:var(--paper)}.mfit .gl .k{fill:var(--ink);stroke:none}
+.mans-tip{font-size:12.5px;font-weight:800;color:var(--brick)}

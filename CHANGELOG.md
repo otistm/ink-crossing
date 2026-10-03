@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.1
+- Hands at the tavern now pitch the stations they'd man, not just cargo. Their bubble lists every fitting they man with no downside, highlights the ones on your ship, and points out a fitting of yours that nobody mans.
+- The ship card shows who mans each fitting: their face sits beside the fitting's name (a red question mark when nobody does), and every crew member says which station they're at. On big screens their faces also stand on the ship drawing, at their fitting's spot.
+
 ## 0.37.0
 - Every fitting is now a station that a crew member mans. Nobody at it, it does nothing. Anyone at it, it works as before, downside and all. A hand with the right craft (Gunnery for Swivel Mounts, Medicine for the Mermaid, Seamanship for the sails...) drops the downside, which shows struck out.
 - Post your hands from the ship card: each fitting shows who mans it and a row of faces to tap. Buying a fitting or hiring a hand posts someone sensible straight away; move them whenever you like outside a fight.
