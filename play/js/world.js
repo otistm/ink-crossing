@@ -81,14 +81,14 @@ const glyph=(k,cls)=>`<svg viewBox="0 0 30 30" class="${cls||'gl'}" aria-hidden=
    Effects are read by name where they apply: fOn(key) in battle.js, hasF(key) elsewhere. d is the text. ---------- */
 const SPOTS={hull:'Hull',sails:'Sails',guns:'Guns',head:'Figurehead'};
 const FITTINGS={
-  secondwind:{n:'Second Wind',spot:'hull',p:24,d:'The first time you would sink in a fight, you stay afloat with half your health.',g:'<path class="w" d="M15 26C7 20 4 16 4 11.5a5.3 5.3 0 0 1 11-2 5.3 5.3 0 0 1 11 2C26 16 23 20 15 26z"/><path d="M15 10v9M10.5 14.5h9"/>'},
+  secondwind:{n:'Second Wind',spot:'hull',p:24,d:'The first time you would sink in a fight, you stay afloat with a quarter of your health.',g:'<path class="w" d="M15 26C7 20 4 16 4 11.5a5.3 5.3 0 0 1 11-2 5.3 5.3 0 0 1 11 2C26 16 23 20 15 26z"/><path d="M15 10v9M10.5 14.5h9"/>'},
   smuggle:{n:"Smuggler's Hold",spot:'hull',p:20,d:'Bandits who board you can only ever take one piece of cargo.',g:'<path class="w" d="M4 10h22v15H4z"/><path class="w" d="M4 10l4-5h14l4 5"/><path d="M11 15h8v6h-8z"/>'},
   stormproof:{n:'Storm Canvas',spot:'sails',p:22,d:'The storm never hurts you. It still hits the enemy.',g:'<path d="M8 3v24"/><path class="w" d="M9 5h14l-3 16H9z"/><path d="M17 8l-4 5h4l-3 5" stroke-width="1.4"/>'},
   crowseye:{n:"Crow's Eye Topmast",spot:'sails',p:20,d:'No fog hides the chart from you. See every stop in the sea.',g:'<path d="M15 12v16"/><path class="w" d="M4 9c5-6.5 17-6.5 22 0-5 6.5-17 6.5-22 0z"/><circle class="k" cx="15" cy="9" r="2.6"/>'},
-  boarding:{n:'Boarding Planks',spot:'guns',p:24,d:"For the first 5s of every fight, the enemy's leftmost item fights for you.",g:'<path class="w" d="M2 19l26-7v4.5L2 23.5z"/><path d="M7 18v4.5M13 16.5v4.5M19 15v4.5M24.5 13.5v4.5"/>'},
+  boarding:{n:'Boarding Planks',spot:'guns',p:24,d:"For the first 8s of every fight, the enemy's leftmost item fights for you.",g:'<path class="w" d="M2 19l26-7v4.5L2 23.5z"/><path d="M7 18v4.5M13 16.5v4.5M19 15v4.5M24.5 13.5v4.5"/>'},
   monkeys:{n:'Powder Monkeys',spot:'guns',p:20,d:'Nothing can slow your cargo.',g:'<path class="w" d="M8 5h14c2 7 2 13 0 20H8c-2-7-2-13 0-20z"/><path d="M6 11h18M6 19h18" stroke-width="1.4"/>'},
-  idol:{n:'Sea Idol',spot:'head',p:22,d:"Burn and poison can't touch you.",g:'<path class="w" d="M10 26V12a5 5 0 0 1 10 0v14z"/><circle class="k" cx="13" cy="13" r="1.2"/><circle class="k" cx="17" cy="13" r="1.2"/><path d="M12.5 19h5M7 26h16"/>'},
-  siren:{n:'Siren',spot:'head',p:24,d:"Her song turns the enemy around: their hold is reversed at the start of every fight, scrambling what sits next to what.",g:'<path class="w" d="M15 3c4 0 5 5 3 9l-2 6c3 1 7 3 8 8-4-1-6-1-9-3-3 2-5 2-9 3 1-5 5-7 8-8l-2-6c-2-4-1-9 3-9z"/>'}
+  idol:{n:'Sea Idol',spot:'head',p:22,d:'Burn and poison put on you are halved.',g:'<path class="w" d="M10 26V12a5 5 0 0 1 10 0v14z"/><circle class="k" cx="13" cy="13" r="1.2"/><circle class="k" cx="17" cy="13" r="1.2"/><path d="M12.5 19h5M7 26h16"/>'},
+  siren:{n:'Siren',spot:'head',p:24,d:"Her song turns the enemy around: their hold is reversed at the start of every fight, and their first item starts slowed for 4s.",g:'<path class="w" d="M15 3c4 0 5 5 3 9l-2 6c3 1 7 3 8 8-4-1-6-1-9-3-3 2-5 2-9 3 1-5 5-7 8-8l-2-6c-2-4-1-9 3-9z"/>'}
 };
 /* fittings from before 0.41, refunded in full when an old save loads (migrateVoyage) */
 const OLDFITP={planks:10,copper:10,ram:10,ballast:10,lateen:10,stormsail:9,topsail:11,studding:9,magazine:11,chase:10,swivel:10,grapeshot:10,gull:12,mermaid:12,kraken:12,lion:12};

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.41.1
+- Fittings evened out. Second Wind now saves you on a quarter of your health (was half). The Sea Idol halves burn and poison put on you (it used to block them). Boarding Planks hold the enemy's item for 8s (was 5s). The Siren also slows the enemy's first item for 4s.
+
 ## 0.41.0
 - Fittings are rebuilt as rare rule-changers with no downside, one per part of the ship: Second Wind and Smuggler's Hold (hull), Storm Canvas and Crow's Eye Topmast (sails), Boarding Planks and Powder Monkeys (guns), Sea Idol and Siren (figurehead). They cost 20 to 24 gold.
 - Only the shipwrights at a sea's later ports build them, never the port you start a sea from, and only once you've won 3 fights this voyage. Each yard has one fitting on its bench. The other yards still mend your hull and tell you where to go.

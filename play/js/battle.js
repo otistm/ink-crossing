@@ -31,12 +31,13 @@ function setupFight(n,f,board){
   P.items.forEach(it=>{if(!it.s.cd)return;if(hasC('whale'))it.s.cd=Math.round(it.s.cd*9)/10;if(hasC('current'))it.c=Math.max(it.c,it.s.cd*.25)});
   if(hasT(E,'smoke')&&!fOn('monkeys'))P.items.forEach(it=>it.sl=3);
   if(hasT(E,'rush'))E.items.forEach(it=>it.h=Math.max(it.h,4));
-  if(hasT(E,'fire')&&!fOn('idol'))P.burn+=TRAITS.fire.x(G.sea);
+  if(hasT(E,'fire'))P.burn+=fOn('idol')?Math.ceil(TRAITS.fire.x(G.sea)/2):TRAITS.fire.x(G.sea);
   if(hasT(E,'whirl'))B.bell-=8;
   // fittings at the start of a fight
   // fittings at the start of a fight: Boarding Planks win over the enemy's leftmost item for a while
   const pc=P.items.filter(it=>it.s.cd);
-  if(fOn('boarding')&&E.items[0]){B.turn=E.items[0];B.turnT=5}
+  if(fOn('boarding')&&E.items[0]){B.turn=E.items[0];B.turnT=8}
+  if(fOn('siren')&&E.items[0])E.items[0].sl=Math.max(E.items[0].sl,4);
   // renown perks at the start of a fight
   if((B.cr.sea||0)>=2)P.items.forEach(it=>{if(it.s.cd)it.c=Math.max(it.c,it.s.cd*.15)});
   // your end slots, for fittings that care where cargo sits
@@ -125,8 +126,8 @@ function applyFx(S,F,it,i,f,depth){
   if(f.grow)for(const k in f.grow)g[k]=(g[k]||0)+f.grow[k];
   recIt=prevRec;
 }
-function burnOn(S,F,n,it,depth){let b=n+(hasT(S,'kindle')?1:0);if(F===B.P&&fOn('idol')){pop(F.fel,'Warded','shield');return}F.burn+=b;if(it&&it.rec)it.rec.burn+=b;pop(it&&it.el||S.fel,'Burn '+b);emit(S,F,'burn',it,depth)}
-function poisonOn(S,F,n,it,depth){if(F===B.P&&fOn('idol')){pop(F.fel,'Warded','shield');return}F.poison+=n;if(it&&it.rec)it.rec.poison+=n;pop(it&&it.el||S.fel,'Poison '+n);emit(S,F,'poison',it,depth)}
+function burnOn(S,F,n,it,depth){let b=n+(hasT(S,'kindle')?1:0);if(F===B.P&&fOn('idol'))b=Math.ceil(b/2);F.burn+=b;if(it&&it.rec)it.rec.burn+=b;pop(it&&it.el||S.fel,'Burn '+b);emit(S,F,'burn',it,depth)}
+function poisonOn(S,F,n,it,depth){if(F===B.P&&fOn('idol'))n=Math.ceil(n/2);F.poison+=n;if(it&&it.rec)it.rec.poison+=n;pop(it&&it.el||S.fel,'Poison '+n);emit(S,F,'poison',it,depth)}
 /* reactions: items listening for things that happen on their own side */
 function emit(S,F,ev,src,depth){
   if(depth>3||!S.items)return;
@@ -172,7 +173,7 @@ function step(dt){
 }
   if(B.t>=B.bell){B.st+=dt;if(B.st>=.5){B.st-=.5;B.storm++;const ps=Math.max(0,(fOn('stormproof')?0:B.storm));B.dot.p.storm+=ps;B.dot.e.storm+=B.storm;hit(B.P,ps,'storm');hit(B.E,B.storm,'storm')}}
   for(const S of[B.P,B.E])if(S.hp<=0&&hasT(S,'undying')&&!S.risen){S.risen=true;S.hp=S.max*.3;S.burn=0;S.poison=0;pop(S.fel,'It rises!')}
-  if(B.P.hp<=0&&fOn('secondwind')&&!B.wind&&B.E.hp>0){B.wind=true;B.P.hp=Math.round(B.P.max/2);pop(B.P.fel,'Second wind!','heal')}
+  if(B.P.hp<=0&&fOn('secondwind')&&!B.wind&&B.E.hp>0){B.wind=true;B.P.hp=Math.round(B.P.max/4);pop(B.P.fel,'Second wind!','heal')}
   if(B.P.hp<=0&&(B.cr.med||0)>=3&&!B.saved&&B.E.hp>0){B.saved=true;B.P.hp=1;pop(B.P.fel,'The surgeon saves you!','heal')}
   if(B.P.hp<=0||B.E.hp<=0)end(B.E.hp<=0&&B.P.hp>0);
 }
