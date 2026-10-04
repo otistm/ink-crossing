@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.40.0
+- Renown is now your captain's level. Each level adds 10 health in every fight, and lets you make a captain's pick or take gold instead (12 gold at level 1, 4 more each level after).
+- On big screens the right-hand panel is rebuilt. The ship is one block (drawing, name, voyage code, ability and hull): tap it for the ship card. The captain's level is its own block with its progress and picks: tap it to see what it has given you and to retime your orders. Tap a fitting to open the ship card with that fitting picked out. Landmarks and the log are gone from the panel (the Log button still opens the log).
+- The Master Gunner's Powder Rations stays as +5% crit for ship weapons. There are no misses.
+
 ## 0.39.0
 - Your crew now have berths under the hold, one slot per berth like the hold's tiles. Each shows the hand's face with a morale face (happy, fair, unhappy, mutinous), their role, what they master, their level and, on wider screens, their perk. Empty berths say to hire at a tavern.
 - A hand with an upgrade to spend is outlined in red with an Upgrade tag: tap them to pick the item. Tap anyone else to open the ship card.

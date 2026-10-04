@@ -1639,3 +1639,39 @@ body.hovtalk #app.talkon .barroom.sided .patron:not(.sel) .bust{filter:url(#tfad
 @media (max-width:640px){.cs-p{display:none}}
 .cslot.up{border-color:var(--brick);box-shadow:2px 2px 0 var(--brick)}
 @media (min-width:1180px) and (min-height:640px){body.desk .dock .crewslots{margin:0}}
+/* the captain's desk: the ship module, the captain's level and the fittings are all buttons */
+@media (min-width:1180px) and (min-height:640px){
+  .desk-mod{display:grid;gap:8px;text-align:left;background:var(--paper);border:2.5px solid var(--line);border-radius:16px;box-shadow:4px 5px 0 var(--ink);padding:12px 14px;transition:transform .22s var(--spring);color:var(--ink);width:100%}
+  .desk-mod:hover{transform:translateY(-2px)}
+  .desk-mod:active{transform:translateY(1px) scale(.99)}
+  #desk .desk-ship{grid-template-columns:64px 1fr;align-items:center}
+  #desk .desk-ship .shipart{width:64px}
+  #desk .desk-ship .desk-trait{grid-column:1/-1;margin:0}
+  .desk-hull{grid-column:1/-1;display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:center}
+  .dh-l{font-size:12px;font-weight:800;color:var(--soft)}
+  .desk-hull b{font:italic 900 18px/1 var(--display)}
+  .desk-hull small{font-size:12px;color:var(--soft)}
+  .desk-hull .hmeter{display:block;height:8px;border:1.5px solid var(--line);border-radius:99px;overflow:hidden;background:var(--paper)}
+  .desk-hull .hmeter i{display:block;height:100%;background:var(--sage)}
+  body.desk #deskstats .hullst{display:none}
+  .dc-head{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center}
+  .dc-head b{display:block;font:italic 900 19px/1.1 var(--display)}
+  .dc-head .soft{font-size:12.5px}
+  .dc-picks{font-size:12.5px;line-height:1.3}
+  .desk-fit{width:100%;text-align:left;background:var(--paper);border:2px solid var(--line);border-radius:12px;padding:6px 8px;transition:transform .22s var(--spring)}
+  .desk-fit:hover{transform:translateX(3px)}
+  .desk-fit p b{display:block}
+  .desk-fit p .soft{font-size:12px}
+}
+.dc-medal{width:40px;height:40px;fill:var(--mustard);stroke:var(--line);stroke-width:4;stroke-linejoin:round}
+.dc-medal text{fill:var(--ink);stroke:none;font:italic 900 34px var(--display)}
+.dc-medal.big{width:72px;height:72px;flex:none}
+.cap-top{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.cap-top h2{margin:0}
+.cap-gains{margin:0 0 12px 18px;display:grid;gap:4px;font-size:14px}
+/* a fitting opened from the desk stands out on the ship card */
+.sc-fit.focus{border-width:3px;box-shadow:5px 5px 0 var(--mustard);transform:scale(1.04)}
+.sc-fit.unfocus{opacity:.45}
+.desk-cap .rn-bar{display:block}
+@media (min-width:1180px) and (min-height:640px){#desk .desk-ship .desk-trait b{display:inline;font:inherit;font-weight:800;margin:0}}
+.goldpick .pi .w{fill:var(--mustard)}

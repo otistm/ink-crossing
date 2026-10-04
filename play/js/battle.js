@@ -246,7 +246,7 @@ function end(win){
   if(win&&G.crew){G.crew.forEach(c=>{const was=crewRank(c);c.xp++;const now=crewRank(c);
     if(now>was){const C=CREW[c.k];c.up=(c.up||0)+(now-was);lines.push(`${C.n} reached level ${now}: raise one of your ${C.crafts.map(x=>CRAFTS[x].toLowerCase()).join(' or ')} a tier.`);logL(`${C.n} reached level ${now}.`)}})}
   if(win&&!(k==='b'&&G.sea>=2)){const gain=k==='b'?3:k==='e'?2:1,was=renownLvl();G.renown=(G.renown||0)+gain;
-    lines.push(`+${gain} renown.${renownLvl()>was?` Renown ${renownLvl()}! Make a captain's pick.`:''}`);
+    lines.push(renownLvl()>was?`Captain's level ${renownLvl()}! +${CAPHP} health in fights, and a pick or gold.`:`+${gain} toward your next captain's level.`);
     const nx=next;next=()=>perksOwed()>0?perkPick(nx):nx()}
   if(win){const nx=next;next=()=>crewUps(nx)}
   save();
@@ -330,7 +330,6 @@ function hullLoss(before,after){
 function loseFit(n){const have=Object.keys(SPOTS).filter(s=>fitIn(s));if(!have.length)return null;
   const spot=have[ri(RNG(G.seed,'lostfit',n.id,G.day),have.length)],k=G.fit[spot];G.fit[spot]=null;
   if(k==='studding')updateReveal();logL(`Lost my ${FITTINGS[k].n} in the fight.`);return k}
-/* a renown level: pick 1 of 3 captain's picks, offered by the voyage code. Orders then ask when the crew should carry them out. */
 /* crew levels: every level a hand gains is one upgrade for an item of the classes they master. After a win each new one is
    offered in turn; one you save (or can't use yet) waits on the ship card's crew list. */
 const upItems=c=>G.board.concat(G.locker||[]).filter(it=>CREW[c.k].crafts.includes(clsOf(it.k).cls)&&it.t<3);
@@ -343,26 +342,28 @@ function crewUpPick(c,done){const C=CREW[c.k],list=upItems(c),cls=C.crafts.map(x
   ov.addEventListener('click',e=>{const p=e.target.closest('[data-u]');
     if(p){const it=list[+p.dataset.u];it.t++;c.up--;flash={ref:it,kind:'up'};logL(`${C.n} helped raise the ${DEFS[it.k].n} to ${TIER[it.t]}.`);save();ov.remove();toast(`${DEFS[it.k].n} raised to ${TIER[it.t]}`);done();return}
     if(e.target.closest('[data-a]')){ov.remove();done()}})}
+/* a captain's level: pick 1 of 3 captain's picks, offered by the voyage code, or take gold instead. Orders then ask when the
+   crew should carry them out. */
 function perkPick(done){
   const taken=G.perks||[],pool=Object.keys(PERKS).filter(k=>!taken.includes(k)&&!(G.tut&&PERKS[k].order)),   // the trial offers rules only, no orders to time
     r=RNG(G.seed,'perk',taken.length),opts=[];
   while(opts.length<3&&pool.length)opts.push(pool.splice(ri(r,pool.length),1)[0]);
-  if(!opts.length)return done();
-  const lvl=taken.length+1,sh=SHIPS[G.ship];
+  const lvl=taken.length+(G.capGold||0)+1,sh=SHIPS[G.ship],gold=capGoldOf(lvl);
   // the level-up: a star medal spins in with the new level on it, little stars burst off it, and the three picks are dealt in
   const ov=overlay(`<div class="rn-up" aria-hidden="true"><span class="rn-bits">${Array.from({length:10},(_,i)=>`<i style="--a:${i*36}deg;--d:${(i%3)*50}ms"><svg viewBox="-6 -6 12 12"><path d="M0-5l1.5 3.2 3.5.4-2.6 2.4.7 3.5L0 3.6l-3.1 1.9.7-3.5L-5-.4l3.5-.4z"/></svg></i>`).join('')}</span>
       <svg class="rn-medal" viewBox="0 0 100 100"><path d="M50 4l13 27 29 4-21 20 5 29-26-14-26 14 5-29L8 35l29-4z"/><text x="50" y="66" text-anchor="middle">${lvl}</text></svg></div>
-    <p class="rn-ribbon">Renown up!</p>
-    <h2 class="rn-title">Renown ${lvl}</h2><p class="soft rn-sub">Word of ${sh.n} spreads along the coast. Make a captain's pick for the rest of the voyage.</p>
-    <div class="picks">${opts.map((k,i)=>`<button class="pick" data-pk="${k}" style="--i:${i}"><span class="pi plain">${STAR}</span><div><b>${PERKS[k].n}${PERKS[k].order?' <span class="soft">order</span>':''}</b><span class="d">${PERKS[k].d}${PERKS[k].order?' Once a fight.':''}</span></div></button>`).join('')}</div>`,true,'perkpick');
+    <p class="rn-ribbon">Captain's level up!</p>
+    <h2 class="rn-title">Captain's level ${lvl}</h2><p class="soft rn-sub">+${CAPHP} health in every fight. Make a captain's pick for the rest of the voyage, or take the gold.</p>
+    <div class="picks">${opts.map((k,i)=>`<button class="pick" data-pk="${k}" style="--i:${i}"><span class="pi plain">${STAR}</span><div><b>${PERKS[k].n}${PERKS[k].order?' <span class="soft">order</span>':''}</b><span class="d">${PERKS[k].d}${PERKS[k].order?' Once a fight.':''}</span></div></button>`).join('')}<button class="pick goldpick" data-pk="gold" style="--i:${opts.length}"><span class="pi plain">${sicon('gold')}</span><div><b>Take the gold</b><span class="d">+${gold} gold now, no pick.</span></div></button></div>`,true,'perkpick');
   coach('renown');
-  const fin=k=>{coach('perkDone');G.perks=taken.concat(k);logL(`Renown ${lvl}: ${PERKS[k].n}${PERKS[k].order?`, ${WHEN[orderWhen(k)]}`:''}.`);save();if(perksOwed()>0)perkPick(done);else done()};
+  const fin=k=>{coach('perkDone');if(k==='gold'){G.capGold=(G.capGold||0)+1;G.gold+=gold;bump='gold';logL(`Captain's level ${lvl}: took ${gold} gold.`);save();if(perksOwed()>0)perkPick(done);else done();return}
+    G.perks=taken.concat(k);logL(`Captain's level ${lvl}: ${PERKS[k].n}${PERKS[k].order?`, ${WHEN[orderWhen(k)]}`:''}.`);save();if(perksOwed()>0)perkPick(done);else done()};
   // choosing: the pick you tap jumps forward and gets stamped, the others drop away, then the voyage carries on
   let chosen=false;
   ov.querySelectorAll('[data-pk]').forEach(b=>b.onclick=()=>{if(chosen)return;chosen=true;const k=b.dataset.pk,still=matchMedia('(prefers-reduced-motion:reduce)').matches;
     ov.querySelectorAll('.pick').forEach(x=>x.classList.add(x===b?'chosen':'dropped'));
     setTimeout(()=>{
-    if(!PERKS[k].order){ov.remove();toast(PERKS[k].n);return fin(k)}
+    if(k==='gold'||!PERKS[k].order){ov.remove();toast(k==='gold'?`+${gold} gold`:PERKS[k].n);return fin(k)}
     ov.querySelector('.sheet').innerHTML=`<h2>${PERKS[k].n}</h2><p class="soft">${PERKS[k].d} When should the crew do it? You can change this on your ship card.</p>
       <div class="picks">${Object.entries(WHEN).map(([w,t])=>`<button class="opt" data-w="${w}"><b>${t[0].toUpperCase()+t.slice(1)}</b>${w===PERKS[k].when?'<span>Suggested</span>':''}</button>`).join('')}</div>`;
     ov.querySelectorAll('[data-w]').forEach(x=>x.onclick=()=>{G.orders=Object.assign({},G.orders,{[k]:x.dataset.w});ov.remove();toast(`${PERKS[k].n} ${WHEN[x.dataset.w]}`);fin(k)});

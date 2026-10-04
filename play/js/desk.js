@@ -1,4 +1,4 @@
-/* Ink Crossing: the captain's desk, a side panel shown only on big screens during a voyage (ship, landmarks, catch, log). */
+/* Ink Crossing: the captain's desk, a side panel shown only on big screens during a voyage (the ship, the captain's level, fittings, catch). */
 "use strict";
 /* Keep in step with the desk rules at the end of styles.css. */
 const DESK=matchMedia('(min-width:1180px) and (min-height:640px)');
@@ -16,19 +16,24 @@ function renderDesk(){
   if(!on){const bar=bar0;if(live&&bar&&!bar.contains(live))bar.prepend(live);if(acts&&bar&&!bar.contains(acts))bar.appendChild(acts);deskEl.innerHTML='';return}
   if(acts&&head&&!head.contains(acts))head.appendChild(acts);
   const sh=SHIPS[G.ship],tr=TRAITS[sh.trait];
-  const marks=G.charts.length?`<div class="marks">${G.charts.map(c=>`<div class="mark">${glyph(c.k)}<p><b>${CHARTS[c.k].n}.</b> ${CHARTS[c.k].d}</p></div>`).join('')}</div>`
-    :`<p class="soft">None yet. Uncharted isles and elites give you landmarks that help for the whole voyage.</p>`;
   const fish={};G.creel.forEach(f=>fish[f]=(fish[f]||0)+1);
   const catchH=G.creel.length?`<section><h3>Catch <span class="soft">${G.creel.length} fish</span></h3><div class="catchlist">${Object.entries(fish).map(([f,k])=>`<div class="fishline">${fishSVG(f)}<span>${FISH[f].n}${k>1?` ×${k}`:''}</span></div>`).join('')}</div></section>`:'';
-  const log=G.log.slice().reverse().map(e=>e.lore?`<p class="log entry">${e.t}</p>`:`<p class="entry"><b>Day ${e.d}.</b> ${e.t}</p>`).join('');
-  deskEl.innerHTML=`<section class="desk-ship">${shipArt(G.ship)}<div><b>${sh.n}</b><span class="soft">${sh.type}. ${G.tut?'The maiden voyage':`Voyage ${codeOf(G.seed)}`}</span></div></section>
-    <p class="desk-trait"><b>${tr.n}.</b> ${tr.d()}</p>
+  const lv=renownLvl(),n=G.renown||0,nx=renownNext(),prev=lv?RENOWN[lv-1]:0,pc=nx?Math.round((n-prev)/(nx-prev)*100):100,hp=Math.max(0,Math.min(1,G.hull/HULL_MAX));
+  const fits=Object.keys(SPOTS).filter(s=>fitIn(s));
+  // the ship module (tap for the ship card), the captain's level (tap for its card), and the fittings (tap one to see it on the ship)
+  deskEl.innerHTML=`<button type="button" class="desk-mod desk-ship" id="deskship" aria-label="${sh.n}: open your ship">${shipArt(G.ship)}<div><b>${sh.n}</b><span class="soft">${sh.type}. ${G.tut?'The maiden voyage':`Voyage ${codeOf(G.seed)}`}</span></div>
+      <p class="desk-trait"><b>${tr.n}.</b> ${tr.d()}</p>
+      <span class="desk-hull"><span class="dh-l">Hull</span><b>${G.hull}<small>/${HULL_MAX}</small></b><span class="hmeter" aria-hidden="true"><i style="width:${Math.round(hp*100)}%"></i></span></span></button>
     <div class="desk-stats" id="deskstats"></div>
-    <section><h3>Renown ${renownLvl()} <span class="soft">${renownNext()?`${G.renown||0} of ${renownNext()}`:'top level'}</span></h3>${(G.perks||[]).length?`<div class="marks">${G.perks.map(k=>`<div class="mark">${STAR}<p><b>${PERKS[k].n}</b> ${PERKS[k].d}${PERKS[k].order?` Fires ${WHEN[orderWhen(k)]}.`:''}</p></div>`).join('')}</div>`:'<p class="soft">Win fights to earn renown and make captain\'s picks.</p>'}</section>
-    <section><h3>Fittings</h3>${G.fit&&Object.values(G.fit).some(Boolean)?`<div class="marks">${Object.keys(SPOTS).filter(s=>fitIn(s)).map(s=>{const k=fitIn(s);return`<div class="mark">${fitGlyph(k)}<p><b>${FITTINGS[k].n}.</b> ${fitDesc(k,s)}</p></div>`}).join('')}</div>`:'<p class="soft">None yet. The shipwright in any port sells them.</p>'}</section>
-    <section><h3>Landmarks</h3>${marks}</section>
-    ${catchH}
-    <section class="desk-log"><h3>Cartographer's log</h3><div class="entries">${log||'<p class="soft">Nothing written yet.</p>'}</div></section>`;
+    <button type="button" class="desk-mod desk-cap" id="deskcap"><span class="dc-head"><svg class="dc-medal" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4l13 27 29 4-21 20 5 29-26-14-26 14 5-29L8 35l29-4z"/><text x="50" y="66" text-anchor="middle">${lv}</text></svg>
+      <span><b>Captain's level ${lv}</b><span class="soft">${nx?`${n} of ${nx} to level ${lv+1}`:'The top level'}${lv?`. +${lv*CAPHP} health`:''}</span></span></span>
+      <span class="rn-bar" aria-hidden="true"><span style="width:${pc}%"></span></span>
+      <span class="soft dc-picks">${(G.perks||[]).length?`${G.perks.length} captain's pick${G.perks.length>1?'s':''}: ${G.perks.map(k=>PERKS[k].n).join(', ')}`:'No captain\'s picks yet. Win fights to level up.'}</span></button>
+    <section><h3>Fittings <span class="soft">${fits.length} of ${Object.keys(SPOTS).length}</span></h3>${fits.length?`<div class="marks">${fits.map(s=>{const k=fitIn(s);return`<button type="button" class="mark desk-fit" data-dfit="${s}">${fitGlyph(k)}<p><b>${FITTINGS[k].n}</b><span class="soft">${SPOTS[s]}</span></p></button>`}).join('')}</div>`:'<p class="soft">None yet. The shipwright in any port sells them.</p>'}</section>
+    ${catchH}`;
+  document.getElementById('deskship').onclick=()=>shipSheet();
+  document.getElementById('deskcap').onclick=captainSheet;
+  deskEl.querySelectorAll('[data-dfit]').forEach(b=>b.onclick=()=>shipSheet(b.dataset.dfit));
   if(live)document.getElementById('deskstats').appendChild(live);
 }
 new MutationObserver(()=>requestAnimationFrame(renderDesk)).observe(app,{childList:true});

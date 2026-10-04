@@ -6,7 +6,7 @@ let G=null,B=null,raf=0,last=0,bump=null,fresh=false;
    RULES FOR CHANGES: never rename or remove a field; give new fields a default in migrateAtlas / VOYAGE_DEFAULTS;
    if a field's meaning changes, bump the schema number and convert old data in the migrate function. */
 const ATLAS_SCHEMA=1,VOYAGE_SCHEMA=1;
-const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0,triage:0,qmDay:null};
+const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0,triage:0,qmDay:null,capGold:0};
 function readKey(key){let raw=null;try{raw=localStorage.getItem(key)}catch(e){}if(!raw)return{raw:null,val:null};
   try{return{raw,val:JSON.parse(raw)}}catch(e){try{localStorage.setItem(key+'-unreadable',raw)}catch(_){}return{raw,val:null}}}
 function migrateAtlas(m){
@@ -80,17 +80,19 @@ const fitDown=k=>hasF(k);
 const fitHP=()=>G&&G.fit?Object.values(G.fit).reduce((a,k)=>a+(k&&FITTINGS[k].hp||0),0):0;
 /* your hold's size: HOLD slots, one fewer with Double Planking. Never more than HOLD. */
 /* your ship's health in a fight at this depth: it grows as the seas get deeper, plus the Bulwark's trait, Coral Reef and fittings */
-function shipHP(depth){const sh=SHIPS[G.ship];return sh.hp+depth*10+(sh.trait==='bulwark'?40:0)+(hasC('coral')?25:0)+fitHP()+(G.triage||0)+(G.tut?120:0)}
+function shipHP(depth){const sh=SHIPS[G.ship];return sh.hp+depth*10+(sh.trait==='bulwark'?40:0)+(hasC('coral')?25:0)+fitHP()+(G.triage||0)+renownLvl()*CAPHP+(G.tut?120:0)}
 /* the health you'd fight with next: in a fight, that fight's; on the way, at the next row's depth */
 function nextHP(){if(B&&B.P)return B.P.max;const n=G.map&&node(G.at);if(!n)return shipHP(0);return shipHP(depthOf({row:Math.min(n.row+1,mapRows())}))}
 const holdCap=()=>hasF('planks')?HOLD-1:HOLD;
 const HULL_MAX=20;   // the shipwright repairs hull up to 20
 const repairCost=()=>hasP('wright')?1:2;
-/* renown: win fights to earn it (threat 1, elite 2, boss 3). Each level lets you pick a perk. Resets every voyage. */
+/* the captain's level (G.renown holds the points): win fights to earn them (threat 1, elite 2, boss 3). Each level adds CAPHP
+   health in fights and lets you make a captain's pick or take gold (G.capGold counts levels taken as gold). Resets every voyage. */
+const CAPHP=10,capGoldOf=lvl=>8+lvl*4;
 const RENOWN=[3,7,12,18,25];
 const renownLvl=()=>RENOWN.filter(x=>(G.renown||0)>=x).length;
 const renownNext=()=>RENOWN.find(x=>(G.renown||0)<x);
-const perksOwed=()=>renownLvl()-(G.perks||[]).length;   // after the captain's picks came in, old saves re-pick (see migrateVoyage)
+const perksOwed=()=>renownLvl()-(G.perks||[]).length-(G.capGold||0);   // after the captain's picks came in, old saves re-pick (see migrateVoyage)
 /* everything your perks add up to, read by the fight */
 const hasP=k=>!!(G&&G.perks&&G.perks.includes(k));
 /* fit a part. The one it replaces sells for half. */

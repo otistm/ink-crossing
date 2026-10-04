@@ -21,7 +21,7 @@ const TUT=[
   {when:'chart',until:'fight',target:'.node.reach',text:"Tap the training hulk, then Sail here."},
   {when:'fight',until:'next',pause:1,target:'.board[data-side="p"]',pos:'bottom',text:"Your cargo charges up and fires on its own."},
   {until:'next',pause:1,target:'.speed',pos:'bottom',text:"A storm hits both ships at 30 seconds. Tap 2× or 4× to speed up."},
-  {when:'renown',until:'perkDone',text:"Wins earn renown. Make a captain's pick: a rule for the whole voyage."},
+  {when:'renown',until:'perkDone',text:"Wins raise your captain's level. Pick a rule for the voyage, or take gold."},
   {when:'spoils',until:'spoilsTaken',target:'.offers',text:"Take one piece of their cargo, then Sail on."},
   // the isle: landmarks
   {when:'chart',until:'sail',target:'.node.reach',text:"Sail to the uncharted isle."},

@@ -159,13 +159,19 @@ function fitRows(){return Object.keys(SPOTS).map(s=>{const k=fitIn(s);
   return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${fitDesc(k)}</span>`:''}</div></div>`}).join('')}
 /* a fitting's text, its downside in red */
 function fitDesc(k){const F=FITTINGS[k],part=(t,cls)=>t?`<span class="${cls}">${t}</span> `:'';return(part(F.shape,'fsh')+part(F.up,'fup')+part(F.dn,'fdn')).trim()}
+/* the captain's level, opened from the desk: level, progress, what it has added, and the picks (orders can be retimed here) */
+function captainSheet(){const lv=renownLvl(),g=G.capGold||0;
+  const ov=overlay(`<div class="cap-top"><svg class="dc-medal big" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4l13 27 29 4-21 20 5 29-26-14-26 14 5-29L8 35l29-4z"/><text x="50" y="66" text-anchor="middle">${lv}</text></svg><div><h2>Captain's level ${lv}</h2><p class="soft">Wins raise it: a threat 1, an elite 2, a boss 3. It starts over each voyage.</p></div></div>
+    <ul class="cap-gains"><li><b>+${lv*CAPHP} health</b> in every fight (${CAPHP} a level)</li>${g?`<li><b>Gold taken</b> at ${g} level${g>1?'s':''} instead of a pick</li>`:''}<li>Next level: ${renownNext()?`${renownNext()-(G.renown||0)} more to go`:'none, this is the top'}</li></ul>
+    ${renownHTML()}<button class="primary" data-a="c">Close</button>`,true);
+  shipBind(ov)}
 function renownHTML(){const n=G.renown||0,lv=renownLvl(),nx=renownNext(),prev=lv?RENOWN[lv-1]:0,pc=nx?Math.round((n-prev)/(nx-prev)*100):100;
-  return`<div class="renown"><div class="rn-head"><b>Renown ${lv}</b><span class="soft">${nx?`${n} of ${nx} to the next level`:`${n}, the top level`}</span></div>
+  return`<div class="renown"><div class="rn-head"><b>Captain's level ${lv}</b><span class="soft">${lv?`+${lv*CAPHP} health. `:''}${nx?`${n} of ${nx} to the next level`:`${n}, the top level`}</span></div>
     <div class="rn-bar" aria-hidden="true"><span style="width:${pc}%"></span></div>
-    ${(G.perks||[]).length?`<ul class="perks">${G.perks.map(k=>`<li><b>${PERKS[k].n}</b> ${PERKS[k].d}${PERKS[k].order?` <label class="when">Fires <select data-ord="${k}">${Object.entries(WHEN).map(([w,t])=>`<option value="${w}"${orderWhen(k)===w?' selected':''}>${t}</option>`).join('')}</select></label>`:''}</li>`).join('')}</ul>`:'<p class="soft" style="font-size:13px">Win fights to earn renown. Each level lets you make a captain\'s pick for this voyage: an order your crew carry out in fights, or a way of running the ship.</p>'}</div>`}
+    ${(G.perks||[]).length?`<ul class="perks">${G.perks.map(k=>`<li><b>${PERKS[k].n}</b> ${PERKS[k].d}${PERKS[k].order?` <label class="when">Fires <select data-ord="${k}">${Object.entries(WHEN).map(([w,t])=>`<option value="${w}"${orderWhen(k)===w?' selected':''}>${t}</option>`).join('')}</select></label>`:''}</li>`).join('')}</ul>`:'<p class="soft" style="font-size:13px">Win fights to raise your captain\'s level. Each level adds health in fights and lets you make a captain\'s pick for this voyage (an order your crew carry out in fights, or a way of running the ship) or take gold.</p>'}</div>`}
 const orderWhen=k=>(G.orders&&G.orders[k])||PERKS[k].when;
-function shipSheet(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait];
-  if(matchMedia(SHIPWIDE).matches)return shipCard();
+function shipSheet(focus){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait];focus=typeof focus==='string'?focus:null;
+  if(matchMedia(SHIPWIDE).matches)return shipCard(focus);
   const ov=overlay(`<div class="sh-top shipsheet-top">${shipArt(G.ship)}<div><h2>${sh.n}</h2><p class="soft" style="margin-top:4px">${sh.type}. ${G.hull} hull. Hold of ${holdCap()} slots.</p></div></div>
     <p class="gloss" style="font-size:14px;color:var(--ink)"><span><b>${tr.n}.</b> ${tr.d()}</span></p>
     <h3 class="shead">Crew <span class="soft">${(G.crew||[]).length}/${berths()} berths</span></h3>
@@ -182,12 +188,12 @@ const SHIPWIDE='(min-width:900px) and (min-height:620px)';
 // where each fitting spot sits on each ship's drawing (in its 120 by 110 frame)
 const SHIPSPOTS={sloop:{sails:[62,36],guns:[72,89],hull:[44,95],head:[12,77]},galleon:{sails:[60,40],guns:[46,88],hull:[66,98],head:[10,76]},
   privateer:{sails:[34,40],guns:[46,89],hull:[64,96],head:[6,71]},junk:{sails:[64,40],guns:[76,88],hull:[44,99],head:[8,72]}};
-function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edit=!!(app.querySelector('#leave')||app.querySelector('.map'));
+function shipCard(focus){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edit=!!(app.querySelector('#leave')||app.querySelector('.map'));
   const n=G.renown||0,lv=renownLvl(),nx=renownNext(),prev=lv?RENOWN[lv-1]:0,pc=nx?Math.round((n-prev)/(nx-prev)*100):100;
   const bar=p=>`<span class="sc-bar" aria-hidden="true"><i style="width:${p}%"></i></span>`;
   const stat=(lbl,big,small,extra)=>`<div class="sc-stat"><span class="sc-lbl">${lbl}</span><b>${big}</b>${small?`<span class="soft">${small}</span>`:''}${extra||''}</div>`;
   const callout=s=>{const k=fitIn(s),F=k&&FITTINGS[k];
-    return`<div class="sc-fit${k?'':' empty'}" data-spot="${s}"><span class="sc-lbl">${SPOTS[s]}</span>
+    return`<div class="sc-fit${k?'':' empty'}${focus?(focus===s?' focus':' unfocus'):''}" data-spot="${s}"><span class="sc-lbl">${SPOTS[s]}</span>
       <div class="sc-fithead">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<b>${F?F.n:'Empty'}</b></div>
       <p>${F?fitDesc(k):`Any port's shipwright can fit ${SPOTS[s].toLowerCase()==='figurehead'?'a figurehead':SPOTS[s].toLowerCase()==='guns'?'guns':`a ${SPOTS[s].toLowerCase()} fitting`}.`}</p></div>`};
   const crew=cs.map((c,i)=>{const C=CREW[c.k],rk=crewRank(c),nx2=rankXP()[rk];
@@ -196,10 +202,10 @@ function shipCard(){const sh=SHIPS[G.ship],tr=TRAITS[sh.trait],cs=G.crew||[],edi
         <span class="soft">Wage ${wageOf(c.k)}. Morale ${pips(c.m,3,'mor')}</span></div>${edit?`<button class="linkbtn" data-dis="${i}">Dismiss</button>`:''}</div>`}).join('')
     +Array.from({length:Math.max(0,berths()-cs.length)},()=>`<div class="sc-hand empty"><span class="sc-face"></span><div class="sc-who"><b>Empty berth</b><span class="soft">Hire crew at a port tavern.</span></div></div>`).join('');
   const picks=(G.perks||[]).length?`<ul class="perks">${G.perks.map(k=>`<li><b>${PERKS[k].n}</b> ${PERKS[k].d}${PERKS[k].order?` <label class="when">Fires <select data-ord="${k}">${Object.entries(WHEN).map(([w,t])=>`<option value="${w}"${orderWhen(k)===w?' selected':''}>${t}</option>`).join('')}</select></label>`:''}</li>`).join('')}</ul>`
-    :'<p class="soft">Win fights to earn renown. Each level lets you make a captain\'s pick for this voyage.</p>';
+    :'<p class="soft">Win fights to raise your captain\'s level. Each level adds health and a captain\'s pick or gold.</p>';
   const ov=overlay(`<button class="sc-x" data-a="c" aria-label="Close">${'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>'}</button>
     <header class="sc-head"><div class="sc-title"><h2>${sh.n}</h2><p class="soft">${sh.type}, voyage ${codeOf(G.seed)}</p><p class="sc-trait"><b>${tr.n}.</b> ${tr.d()}</p></div>
-      <div class="sc-stats">${stat('Hull',`${G.hull}<small>/${HULL_MAX}</small>`,'',bar(Math.round(G.hull/HULL_MAX*100)))}${stat('Hold',holdCap(),'slots')}${stat('Crew',`${cs.length}<small>/${berths()}</small>`,'berths')}${stat('Renown',lv,nx?`${n} of ${nx}`:'top level',bar(pc))}</div></header>
+      <div class="sc-stats">${stat('Hull',`${G.hull}<small>/${HULL_MAX}</small>`,'',bar(Math.round(G.hull/HULL_MAX*100)))}${stat('Hold',holdCap(),'slots')}${stat('Crew',`${cs.length}<small>/${berths()}</small>`,'berths')}${stat('Captain',`Lv ${lv}`,nx?`${n} of ${nx}`:'top level',bar(pc))}</div></header>
     <div class="sc-hero" id="schero">
       <div class="sc-fits left">${callout('head')}${callout('hull')}</div>
       <div class="sc-ship">${shipArt(G.ship,'sc-art')}<svg class="sc-waves" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8q10-7 20 0t20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0"/><path d="M0 16q10-6 20 0t20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0" opacity=".45"/></svg></div>
