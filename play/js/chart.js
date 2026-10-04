@@ -132,7 +132,7 @@ function nodeInfo(n,hover){
   if(n.type==='port'&&n.visitor)body+=`<p class="soft">Someone is waiting on the dock.</p>`;
   if(n.enemy){const f=enemyOf(n),e=f.e,k=e.kind;if(!hover){A.met[n.enemy]=1;saveA()}
     // the health they start the fight with: their own cargo adds to it (sideOf), and the Kraken fitting swells it (setupFight)
-    let hp=f.hp+sideOf(f.list).hp;if(fitDown('kraken'))hp=Math.round(hp*1.1);
+    let hp=f.hp+sideOf(f.list).hp;
     body=`<p class="soft">${k==='b'?'The guardian of this sea. Beat it to sail on.':k==='e'?'Elite. Tougher, with better spoils.':'A threat on the route.'} ${hp} health.</p>${traitsHTML(e,G.sea)}
       ${hasC('sound')&&!hover?`<div class="mini-board"><p class="label" style="margin:6px 0">Their cargo</p>${boardHTML(f.list,'e')}</div>`:''}
       <p class="soft">Win: ${k==='b'?`${15+G.sea*10} gold and passage to the next sea`:k==='e'?`${10+f.depth} gold, a pick of cargo and a landmark`:`${5+Math.floor(f.depth/2)} gold and a pick of cargo`}. Lose: ${lossOf(k)} hull${k==='b'?' and fall back to port':''}.</p>`}

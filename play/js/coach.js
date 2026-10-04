@@ -30,8 +30,8 @@ const TUT=[
   // Saltmere: upgrades, selling, fittings
   {when:'port',until:'bought',target:'.stallsec',text:"Open the Armory and buy the Rapier. A matching item upgrades yours."},
   {until:'next',target:'.dock .board',text:"Upgraded! To sell cargo, drag it onto Set sail."},
-  {until:'wright',target:'[data-bld="wright"]',pos:'bottom',text:"Fittings change how your ship fights. Open the Shipwright."},
-  {when:'wright',until:'fitted',target:'#stall',text:"Tap a fitting, then fit it. Each one has a trade-off."},
+  {until:'wright',target:'[data-bld="wright"]',pos:'bottom',text:"Shipwrights build fittings once you've won a few fights. Open the yard."},
+  {when:'wright',until:'fitted',target:'#stall',text:"Fittings are rare. Each changes one rule of the fight. Fit one."},
   {when:'fitted',until:'next',target:'#shipbtn',pos:'bottom',text:"Tap your hull any time to see your ship."},
   {until:'chart',target:'#leave',text:"One test left. Set sail."},
   // the examiner: everything together
@@ -57,7 +57,7 @@ function startTutorial(){
     shops:{900:{offers:[{k:'jib',t:0},{k:'sail',t:0},{k:'fenders',t:0},{k:'tar',t:0}],stalls:{armory:[{k:'rapier',t:0},{k:'swordcane',t:0},{k:'dagger',t:0},{k:'pins',t:0}],
         apoth:[{k:'pork',t:0},{k:'grog',t:0},{k:'lime',t:0},{k:'teapot',t:0}],charms:[{k:'spyglass',t:0},{k:'hook',t:0},{k:'net',t:0},{k:'tailwind',t:0}]},tavern:['atarms','bosun','surgeon'],reroll:1,demand:'mackerel'},
       903:{offers:[{k:'fenders',t:0},{k:'plating',t:0},{k:'compass',t:0},{k:'tar',t:0}],stalls:{armory:[{k:'rapier',t:0},{k:'pistols',t:0},{k:'duelglove',t:0},{k:'dagger',t:0}],
-        apoth:[{k:'pork',t:0},{k:'lime',t:0},{k:'kelp',t:0},{k:'teapot',t:0}],charms:[{k:'spyglass',t:0},{k:'hook',t:0},{k:'net',t:0},{k:'rum',t:0}]},fits:['ram','studding'],reroll:1,demand:'mackerel'}}});
+        apoth:[{k:'pork',t:0},{k:'lime',t:0},{k:'kelp',t:0},{k:'teapot',t:0}],charms:[{k:'spyglass',t:0},{k:'hook',t:0},{k:'net',t:0},{k:'rum',t:0}]},fits:['secondwind','stormproof'],reroll:1,demand:'mackerel'}}});
   updateReveal();lore(LORE.start);port(900);
 }
 /* is a place open? Everywhere in a real voyage; in the trial, only where that stop's lesson is */

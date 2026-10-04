@@ -101,7 +101,7 @@ function bandits(n,done,resumed){
     if(won){// they pay up and row away
       gold=bandPurse();G.gold+=gold;bump='gold';msg=`Beat the bandits at cards. They paid ${gold} gold to be rid of us.`}
     else{// they take the most valuable half of the hold, rounded up; the rest stays where it was
-      const best=G.board.map((b,i)=>i).sort((a,b)=>price(G.board[b].k,G.board[b].t)-price(G.board[a].k,G.board[a].t)).slice(0,Math.ceil(G.board.length/2));
+      const best=G.board.map((b,i)=>i).sort((a,b)=>price(G.board[b].k,G.board[b].t)-price(G.board[a].k,G.board[a].t)).slice(0,hasF('smuggle')?1:Math.ceil(G.board.length/2));
       lost.push(...best.sort((a,b)=>a-b).map(i=>G.board[i]));G.board=G.board.filter((b,i)=>!best.includes(i));const was=G.hull;G.hull=Math.max(1,Math.floor(G.hull/2));
       msg=`Lost to the bandits at cards. They took the best half of the hold${lost.length?` (${lost.length} piece${lost.length===1?'':'s'} of cargo)`:''} and smashed the hull from ${was} to ${G.hull}.`}
     logL(msg);save();

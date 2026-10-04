@@ -6,7 +6,7 @@ let G=null,B=null,raf=0,last=0,bump=null,fresh=false;
    RULES FOR CHANGES: never rename or remove a field; give new fields a default in migrateAtlas / VOYAGE_DEFAULTS;
    if a field's meaning changes, bump the schema number and convert old data in the migrate function. */
 const ATLAS_SCHEMA=1,VOYAGE_SCHEMA=1;
-const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0,triage:0,qmDay:null,capGold:0};
+const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0,triage:0,qmDay:null,capGold:0,won:0};
 function readKey(key){let raw=null;try{raw=localStorage.getItem(key)}catch(e){}if(!raw)return{raw:null,val:null};
   try{return{raw,val:JSON.parse(raw)}}catch(e){try{localStorage.setItem(key+'-unreadable',raw)}catch(_){}return{raw,val:null}}}
 function migrateAtlas(m){
@@ -15,7 +15,7 @@ function migrateAtlas(m){
   ['voyages','wins','bosses','elites','best'].forEach(k=>{if(typeof out[k]!=='number'||!isFinite(out[k]))out[k]=0});
   // for the future: if(out.sv<2){ ...convert...; out.sv=2; }
   out.sv=ATLAS_SCHEMA;return out}
-function migrateVoyage(v){if(!v||!v.map||!v.board)return null;const out=Object.assign({},VOYAGE_DEFAULTS,v);out.sv=VOYAGE_SCHEMA;if(!out.crew)crewFromOldSave(out);trimHold(out);if(out.perks&&out.perks.some(k=>!PERKS[k]))out.perks=[];mapCrew(out);return out}
+function migrateVoyage(v){if(!v||!v.map||!v.board)return null;const out=Object.assign({},VOYAGE_DEFAULTS,v);out.sv=VOYAGE_SCHEMA;if(!out.crew)crewFromOldSave(out);trimHold(out);if(out.perks&&out.perks.some(k=>!PERKS[k]))out.perks=[];mapCrew(out);oldFits(out,v);return out}
 /* holds shrank from 10 slots to 9: whatever no longer fits moves to the locker if there's room, otherwise it's sold */
 function trimHold(g){const cap=g.fit&&Object.values(g.fit).includes('planks')?HOLD-1:HOLD;
   while(g.board.length&&used(g.board)>cap){const it=g.board.pop(),d=DEFS[it.k];
@@ -48,9 +48,14 @@ const hasC=k=>!!(G&&G.charts&&G.charts.some(c=>c.k===k));
 function mapCrew(g){if(!g.crew)return;const seen=new Set();
   g.crew=g.crew.filter(c=>{const k=CREW[c.k]?c.k:OLDCREW[c.k];delete c.post;if(!k||seen.has(k)){g.gold+=5;return false}seen.add(k);c.k=k;return true});
   for(const id in g.shops||{}){const S=g.shops[id];if(S.tavern)S.tavern=S.tavern.map(k=>k&&(CREW[k]?k:OLDCREW[k])||null).map((k,i,a)=>k&&!seen.has(k)&&a.indexOf(k)===i?k:null)}}
+/* fittings were redesigned (0.41): any old fitting aboard or on a saved bench is refunded in full. Wins are counted from then;
+   an older voyage starts from its renown, which counts wins (elites and bosses count more). */
+function oldFits(g,v){if(v.won==null)g.won=g.renown||0;
+  if(g.fit)for(const s in g.fit){const k=g.fit[s];if(k&&!FITTINGS[k]){g.fit[s]=null;g.gold+=OLDFITP[k]||10;(g.log=g.log||[]).push({d:g.day,t:`The shipwrights recalled an old fitting and paid back ${OLDFITP[k]||10} gold.`})}}
+  for(const id in g.shops||{}){const S=g.shops[id];if(S.fits)S.fits=S.fits.map(k=>k&&FITTINGS[k]?k:null)}}
 /* is a hand with this perk aboard? */
 const crewHas=perk=>!!(G&&G.crew&&G.crew.some(c=>CREW[c.k]&&CREW[c.k].perk===perk));
-const berths=()=>(SHIPS[G.ship].berths||3)+(hasP('berth')?1:0)+(hasF('ballast')?FITTINGS.ballast.berth:0);
+const berths=()=>(SHIPS[G.ship].berths||3)+(hasP('berth')?1:0);
 const rankXP=()=>hasP('drill')?RANKXP.map(x=>Math.max(0,x-1)):RANKXP;
 const crewRank=c=>rankXP().filter(x=>c.xp>=x).length;
 const wageOf=k=>Math.max(0,CREW[k].wage-(hasP('paymaster')?1:0));
@@ -74,16 +79,13 @@ function payWages(){if(!G.crew||!G.crew.length||G.tut||G.path.length<2)return'';
 /* fittings: G.fit is {hull,sails,guns,head}, or null until the first one */
 const hasF=k=>!!(G&&G.fit&&Object.values(G.fit).includes(k));
 const fitIn=spot=>G&&G.fit&&G.fit[spot]||null;
-/* fittings simply work, trade-off and all (crew stations were tried in 0.37 and replaced by crew roles in 0.38) */
-const fitOn=k=>hasF(k);
-const fitDown=k=>hasF(k);
 const fitHP=()=>G&&G.fit?Object.values(G.fit).reduce((a,k)=>a+(k&&FITTINGS[k].hp||0),0):0;
 /* your hold's size: HOLD slots, one fewer with Double Planking. Never more than HOLD. */
 /* your ship's health in a fight at this depth: it grows as the seas get deeper, plus the Bulwark's trait, Coral Reef and fittings */
 function shipHP(depth){const sh=SHIPS[G.ship];return sh.hp+depth*10+(sh.trait==='bulwark'?40:0)+(hasC('coral')?25:0)+fitHP()+(G.triage||0)+renownLvl()*CAPHP+(G.tut?120:0)}
 /* the health you'd fight with next: in a fight, that fight's; on the way, at the next row's depth */
 function nextHP(){if(B&&B.P)return B.P.max;const n=G.map&&node(G.at);if(!n)return shipHP(0);return shipHP(depthOf({row:Math.min(n.row+1,mapRows())}))}
-const holdCap=()=>hasF('planks')?HOLD-1:HOLD;
+const holdCap=()=>HOLD;
 const HULL_MAX=20;   // the shipwright repairs hull up to 20
 const repairCost=()=>hasP('wright')?1:2;
 /* the captain's level (G.renown holds the points): win fights to earn them (threat 1, elite 2, boss 3). Each level adds CAPHP
@@ -101,8 +103,9 @@ function equip(k){const f=FITTINGS[k],old=fitIn(f.spot);G.fit=Object.assign({hul
   G.fit[f.spot]=k;if(k==='studding'||old==='studding')updateReveal();
   logL(old?`Fitted ${f.n} in place of ${FITTINGS[old].n}, which sold for ${back} gold.`:`Fitted ${f.n}.`);return back}
 /* can this part go on? Double Planking needs a free slot, and taking it off always fits */
-function canEquip(k){const f=FITTINGS[k],old=fitIn(f.spot);if(old===k)return false;
-  const cap=HOLD-(k==='planks'?1:0)-(f.spot!=='hull'&&hasF('planks')?1:0);return used(G.board)<=cap}
+/* a fitting's price: the maiden voyage's are cheap, so the trial can afford one */
+const fitP=k=>G&&G.tut?8:FITTINGS[k].p;
+function canEquip(k){return fitIn(FITTINGS[k].spot)!==k}
 const node=id=>G.map.nodes.find(n=>n.id===id);
 /* how many rows a sea's chart has before the boss: 9 now (12 for a while, 6 on charts drawn before that, and the tutorial's) */
 const ROWS=9,mapRows=()=>(G&&G.map&&G.map.rows)||6;
@@ -188,7 +191,7 @@ function genMap(seed,sea){
   if(bc.length){const n=pick(r,bc);n.type='event';n.ev='bandits';delete n.enemy}
   return{sea,start,boss,rows:ROWS,nodes,edges:E};
 }
-function updateReveal(){const row=node(G.at).row;G.reveal=G.full?99:row+2+G.extra+(G.far||0)+(hasC('buoy')?1:0)+(fitOn('studding')?1:0)}
+function updateReveal(){const row=node(G.at).row;G.reveal=G.full?99:row+2+G.extra+(G.far||0)+(hasC('buoy')?1:0);if(hasF('crowseye'))G.reveal=99}
 
 /* ---------- enemy boards (seeded: every captain on this sea meets the same crew) ---------- */
 /* how tough each sea's enemies are: their health, how much cargo they carry, and the best tier it comes in. The Shallows go

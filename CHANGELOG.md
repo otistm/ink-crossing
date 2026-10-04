@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.41.0
+- Fittings are rebuilt as rare rule-changers with no downside, one per part of the ship: Second Wind and Smuggler's Hold (hull), Storm Canvas and Crow's Eye Topmast (sails), Boarding Planks and Powder Monkeys (guns), Sea Idol and Siren (figurehead). They cost 20 to 24 gold.
+- Only the shipwrights at a sea's later ports build them, never the port you start a sea from, and only once you've won 3 fights this voyage. Each yard has one fitting on its bench. The other yards still mend your hull and tell you where to go.
+- Losing a fight no longer tears a fitting away, and elites no longer carry them.
+- Double Planking and Crew Quarters are gone with the old fittings, so every hold is 9 slots and berths come from your ship and captain's picks.
+- Voyages in progress: any old fitting is taken off and its price paid back in full, and the wins you'd already earned count toward the shipwright's 3.
+
 ## 0.40.0
 - Renown is now your captain's level. Each level adds 10 health in every fight, and lets you make a captain's pick or take gold instead (12 gold at level 1, 4 more each level after).
 - On big screens the right-hand panel is rebuilt. The ship is one block (drawing, name, voyage code, ability and hull): tap it for the ship card. The captain's level is its own block with its progress and picks: tap it to see what it has given you and to retime your orders. Tap a fitting to open the ship card with that fitting picked out. Landmarks and the log are gone from the panel (the Log button still opens the log).

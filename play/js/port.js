@@ -28,12 +28,12 @@ function port(id,view){
   if(G.tut&&id!==900)n.visitor=null;
   const ups=new Set();OF.forEach(o=>{if(!o)return;const j=matchIdx(o);if(j>=0)ups.add(j)});
   // the shipwright's two fittings for this visit, seeded like the first market offers
-  if(!G.tut&&!S.fits){const r=RNG(G.seed,'wright',id,G.shopVisit||0),pool=Object.keys(FITTINGS).filter(k=>!hasF(k));S.fits=[];
+  if(!G.tut&&!S.fits){const r=RNG(G.seed,'wright',id,G.shopVisit||0),pool=wrightBuilds(id)?Object.keys(FITTINGS).filter(k=>!hasF(k)):[];S.fits=[];
     // the wright's own speciality goes on the bench first
     const mine=pool.filter(k=>FITTINGS[k].spot===WRIGHTS[wrightOf(id)].spot);if(mine.length){const k=mine[ri(r,mine.length)];S.fits.push(k);pool.splice(pool.indexOf(k),1)}
-    while(S.fits.length<(hasP('wright')?3:2)&&pool.length)S.fits.push(pool.splice(ri(r,pool.length),1)[0])}
+    while(S.fits.length<(hasP('wright')?2:1)&&pool.length)S.fits.push(pool.splice(ri(r,pool.length),1)[0])}
   // the Quartermaster's Smuggler's Charm: the first reroll each day is a gold cheaper
-  const qmOff=crewHas('smuggle')&&G.qmDay!==G.day?1:0,rr=Math.max(0,S.reroll+(fitDown('lion')?1:0)-qmOff);
+  const qmOff=crewHas('smuggle')&&G.qmDay!==G.day?1:0,rr=Math.max(0,S.reroll-qmOff);
   // the tavern's hires for this visit, seeded like the market
   if(!G.tut&&!S.tavern){const r=RNG(G.seed,'tavern',id,G.shopVisit||0),pool=Object.keys(CREW).filter(k=>!(G.crew||[]).some(c=>c.k===k));S.tavern=[];
     while(S.tavern.length<(hasP('recruiter')?4:3)&&pool.length)S.tavern.push(pool.splice(ri(r,pool.length),1)[0])}
@@ -76,10 +76,10 @@ function port(id,view){
   app.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{const i=+b.dataset.f,f=G.creel[i],g=fishVal(f,f===S.demand?2:1),r=(app.querySelector(`[data-df="${i}"] .o-icon`)||b).getBoundingClientRect();G.creel.splice(i,1);G.gold+=g;PV.dsold=true;logL(`Sold ${an(FISH[f].n)} for ${g} gold.`);save();port(id,view);fishSaleFx([f],[r],g)});
   const sa=document.getElementById('sellall');if(sa)sa.onclick=()=>{const g=G.creel.reduce((a,f)=>a+fishVal(f,f===S.demand?2:1),0),fs=G.creel.slice(),rs=fs.map((f,i)=>{const e=app.querySelector(`[data-df="${i}"] .o-icon`);return e&&e.getBoundingClientRect()});G.creel=[];G.gold+=g;PV.dsold=true;logL(`Sold my catch at ${n.name} for ${g} gold.`);save();port(id,view);fishSaleFx(fs,rs,g)};
   app.querySelectorAll('[data-fit]').forEach(b=>b.onclick=()=>{const i=+b.dataset.fit,k=S.fits[i],f=FITTINGS[k];
-    if(G.gold<f.p)return toast(`Need ${f.p-G.gold} more gold`);
-    if(!canEquip(k))return toast('Double Planking boards up a slot. Sell something to make room first.');
+    if(G.gold<fitP(k))return toast(`Need ${fitP(k)-G.gold} more gold`);
+    if(!canEquip(k))return toast('You already have that fitting');
     const from=(app.querySelector(`.fitgood[data-w="${i}"] .o-icon`)||b).getBoundingClientRect(),old=fitIn(f.spot);
-    G.gold-=f.p;const back=equip(k);S.fits[i]=null;PV.wsel=null;bump='gold';save();toast(`Fitted ${f.n}${back?`. Sold the old one for ${back} gold`:''}`);port(id,view);fitFly(k,from,old);setTimeout(()=>coach('fitted'),G.tut?2600:0)});
+    G.gold-=fitP(k);const back=equip(k);S.fits[i]=null;PV.wsel=null;bump='gold';save();toast(`Fitted ${f.n}${back?`. Sold the old one for ${back} gold`:''}`);port(id,view);fitFly(k,from,old);setTimeout(()=>coach('fitted'),G.tut?2600:0)});
   app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const n=b.dataset.r==='all'?repairable():1;
     if(n<1||G.gold<n*repairCost())return toast(G.hull>=HULL_MAX?'The hull is already sound.':`Need ${n*repairCost()-G.gold} more gold`);
     const was=G.hull;G.gold-=n*repairCost();G.hull+=n;bump='hull';logL(`Paid the shipwright ${n*repairCost()} gold to repair ${n} hull.`);save();port(id,view);repairFx(was,G.hull)});
@@ -338,23 +338,28 @@ const repairable=()=>Math.max(0,Math.min(HULL_MAX-G.hull,Math.floor(G.gold/repai
 /* the shipwright: a yard laid out like the market stall. The wright stands at their workbench with a speech bubble beside them;
    on the bench are the fittings for sale and a mallet for hull repairs. Tap one and they tell you about it, with the button. */
 const REPAIRG='<path class="w" d="M3 19h24v6H3z"/><path d="M7 19v6M15 19v6M23 19v6" stroke-width="1.2"/><path class="w" d="M15 4h10v6H15z"/><path d="M20 10l-7 9" stroke-width="2.4"/>';
+/* fittings are rare: only the yards at a sea's later ports build them (not the port you start a sea from), and only for a
+   captain with WRIGHTWINS wins this voyage. The trial's Saltmere always builds. */
+function wrightBuilds(id){const n=node(id);return!!G.tut||(n.row>0&&(G.won||0)>=WRIGHTWINS)}
+function wrightNote(id){if(wrightBuilds(id))return'';const n=node(id),left=WRIGHTWINS-(G.won||0);
+  return n.row===0?"I mend hulls here. For fittings, find a yard further out in this sea.":`Win ${left} more fight${left>1?'s':''} and I'll build you a fitting. I don't waste good work on green captains.`}
 function wrightHTML(S,id,anim){const wk=wrightOf(id),W=WRIGHTS[wk],all=repairable(),hurt=G.hull<HULL_MAX;
   let sel=PV.wsel;if(sel==null||(sel!=='r'&&!S.fits[sel]))sel=S.fits.findIndex(Boolean);if(sel<0)sel='r';
   const tag=t=>`<span class="ptag">${t}</span>`;
   const goods=S.fits.map((k,i)=>{if(!k)return`<span class="good gone" aria-label="Fitted"><span class="o-icon"></span>${tag('fitted')}</span>`;
       const f=FITTINGS[k];
-      return`<button class="good fitgood${i===sel?' sel':''}${anim?' in':''}" data-w="${i}" style="animation-delay:${i*70}ms" aria-label="${f.n}, ${f.p} gold${i===sel?', selected':''}"><span class="o-icon plain">${fitGlyph(k)}</span>${tag(`${sicon('gold')}${f.p}`)}</button>`}).join('')
+      return`<button class="good fitgood${i===sel?' sel':''}${anim?' in':''}" data-w="${i}" style="animation-delay:${i*70}ms" aria-label="${f.n}, ${fitP(k)} gold${i===sel?', selected':''}"><span class="o-icon plain">${fitGlyph(k)}</span>${tag(`${sicon('gold')}${fitP(k)}`)}</button>`}).join('')
     +`<button class="good fitgood${sel==='r'?' sel':''}${anim?' in':''}" data-w="r" style="animation-delay:${S.fits.length*70}ms" aria-label="Hull repairs${sel==='r'?', selected':''}"><span class="o-icon plain"><svg viewBox="0 0 30 30" class="gl" aria-hidden="true">${REPAIRG}</svg></span>${tag(hurt?`${sicon('gold')}${repairCost()} each`:'hull full')}</button>`;
   let talk;
   if(sel==='r'){
     talk=`<div class="talk" id="talk"><p class="say">“${!hurt?W.full:G.gold<repairCost()?W.broke:W.repair}”</p>
-      <p class="who"><b>Hull repairs</b><span class="chipc">hull ${G.hull}/${HULL_MAX}</span></p>
+      ${wrightNote(id)?`<p class="desc">${wrightNote(id)}</p>`:''}<p class="who"><b>Hull repairs</b><span class="chipc">hull ${G.hull}/${HULL_MAX}</span></p>
       ${hurt?`<div class="acts"><button class="buy" data-r="${all>1?'all':1}" ${all<1?'aria-disabled="true"':''}>Repair ${Math.max(1,all)} for ${Math.max(1,all)*repairCost()} gold</button>${all>1?`<button class="linkbtn" data-r="1">Just 1</button>`:''}</div>`:''}</div>`}
-  else{const k=S.fits[sel],f=FITTINGS[k],old=fitIn(f.spot),ok=canEquip(k),poor=G.gold<f.p;
+  else{const k=S.fits[sel],f=FITTINGS[k],old=fitIn(f.spot),ok=canEquip(k),poor=G.gold<fitP(k);
     talk=`<div class="talk" id="talk"><p class="say">“${!ok?W.slot:poor?W.broke:W.say[f.spot]}”</p>
-      <p class="who"><b>${f.n}</b><span class="chipc">${SPOTS[f.spot]}</span>${f.hp?`<span class="chipc">${f.hp>0?'+':'−'}${Math.abs(f.hp)} health</span>`:''}</p>
+      <p class="who"><b>${f.n}</b><span class="chipc">${SPOTS[f.spot]}</span></p>
       <p class="desc">${fitDesc(k)}${old?` <span class="soft">Replaces your ${FITTINGS[old].n}, which sells for ${Math.floor(FITTINGS[old].p/2)}.</span>`:''}</p>
-      <button class="buy" data-fit="${sel}" ${poor||!ok?'aria-disabled="true"':''}>Fit for ${f.p} gold</button></div>`}
+      <button class="buy" data-fit="${sel}" ${poor||!ok?'aria-disabled="true"':''}>Fit for ${fitP(k)} gold</button></div>`}
   // the back wall: a pegboard of saws, mallets, coiled rope and planks, tiled so it fills any width
   const tools=`<pattern id="tools" width="150" height="70" patternUnits="userSpaceOnUse"><g fill="#FBF5E8" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
       <path d="M10 10h6v46h-6z" fill="#B98E64"/><path d="M8 10h10M13 4v6" fill="none"/>

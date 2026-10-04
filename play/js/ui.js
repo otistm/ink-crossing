@@ -157,8 +157,8 @@ function postLine(c){const C=CREW[c.k],P=CREWPERK[C.perk];return`<span class="at
 /* ---------- your ship: trait and fittings ---------- */
 function fitRows(){return Object.keys(SPOTS).map(s=>{const k=fitIn(s);
   return`<div class="fitrow${k?'':' empty'}">${k?fitGlyph(k):'<span class="fitnone" aria-hidden="true"></span>'}<div><span class="soft">${SPOTS[s]}</span><b>${k?FITTINGS[k].n:'Empty'}</b>${k?`<span class="d">${fitDesc(k)}</span>`:''}</div></div>`}).join('')}
-/* a fitting's text, its downside in red */
-function fitDesc(k){const F=FITTINGS[k],part=(t,cls)=>t?`<span class="${cls}">${t}</span> `:'';return(part(F.shape,'fsh')+part(F.up,'fup')+part(F.dn,'fdn')).trim()}
+/* a fitting's text */
+const fitDesc=k=>FITTINGS[k].d;
 /* the captain's level, opened from the desk: level, progress, what it has added, and the picks (orders can be retimed here) */
 function captainSheet(){const lv=renownLvl(),g=G.capGold||0;
   const ov=overlay(`<div class="cap-top"><svg class="dc-medal big" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4l13 27 29 4-21 20 5 29-26-14-26 14 5-29L8 35l29-4z"/><text x="50" y="66" text-anchor="middle">${lv}</text></svg><div><h2>Captain's level ${lv}</h2><p class="soft">Wins raise it: a threat 1, an elite 2, a boss 3. It starts over each voyage.</p></div></div>
