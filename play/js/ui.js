@@ -126,7 +126,7 @@ function holdFlash(){if(!flash)return;const f=flash;flash=null;
     document.body.append(burst,tag);const hw=tag.offsetWidth/2+6;tag.style.left=Math.max(hw,Math.min(innerWidth-hw,cx))+'px';   // keep the label on screen
     setTimeout(()=>{burst.remove();tag.remove()},1300);return}}
 function bindHold(mode,rerender,ext){
-  dragHold(mode,rerender,ext);holdFlash();const cb=document.getElementById('crewbar');if(cb)cb.onclick=shipSheet;
+  dragHold(mode,rerender,ext);holdFlash();document.querySelectorAll('#crewbar [data-cs]').forEach(b=>b.onclick=()=>{const c=G.crew&&G.crew[+b.dataset.cs];if(c&&c.up)crewUpPick(c,rerender);else shipSheet()});
   app.querySelectorAll('.dock .board[data-side="p"] .item').forEach(b=>b.onclick=()=>{if(dragJustEnded)return;const i=+b.dataset.i;
     if(G.moving){if(i!==G.sel){const[it]=G.board.splice(G.sel,1);G.board.splice(i,0,it)}G.moving=false;G.sel=null;save();rerender();coach('moved')}
     else itemSheet(G.board,i,mode,rerender)});
@@ -316,6 +316,17 @@ function dragHold(mode,rerender,ext){
 function tileSize(s){const b=app.querySelector('.dock .board[data-side="p"]');if(!b)return{w:40*s,h:66};
   const cs=getComputedStyle(b),gap=parseFloat(cs.columnGap)||4,cell=(b.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-(HOLD-1)*gap)/HOLD,c=b.firstElementChild;
   return{w:cell*s+gap*(s-1),h:c?c.getBoundingClientRect().height:66}}
+/* the crew berths under the hold, one slot per berth like the hold's tiles: each hand's face and morale, role, perk and level.
+   A hand with an upgrade to spend shows it; tapping them spends it, tapping anyone else opens the ship card. */
+const MOOD=['😠','😟','😐','😄'],MOODN=['Mutinous','Unhappy','Fair','Happy'];
+function crewSlotsHTML(){const cs=G.crew||[];
+  return`<div class="crewslots" id="crewbar" aria-label="Your crew">${Array.from({length:Math.max(berths(),cs.length)},(_,i)=>{const c=cs[i];
+    if(!c)return`<button type="button" class="cslot empty" data-cs="-1"><span class="cs-face"></span><b class="cs-n">Empty berth</b><span class="cs-lv">Hire at a tavern</span></button>`;
+    const C=CREW[c.k],P=CREWPERK[C.perk],lv=crewRank(c);
+    return`<button type="button" class="cslot${c.up?' up':''}" data-cs="${i}" aria-label="${C.n}, level ${lv}, morale ${MOODN[c.m]||''}${c.up?', upgrade ready':''}">
+      <span class="cs-face">${crewFace(c.k)}<span class="cs-mood" title="Morale: ${MOODN[c.m]||''}" aria-hidden="true">${MOOD[Math.max(0,Math.min(3,c.m))]}</span></span>
+      <b class="cs-n">${C.n}</b>
+      <span class="cs-lv"><span class="cs-ic" title="${C.crafts.map(x=>CRAFTS[x]).join(', ')}">${C.crafts.map(craftIcon).join('')}</span>Lv ${lv}${c.up?'<i title="Upgrade ready">Upgrade</i>':''}<span class="cs-p">${P.n}</span></span></button>`}).join('')}</div>`}
 function holdDock(extra,ups,lups,hint){
   hint=G.moving?'Tap an item to put it there, or an empty slot to send it to the end.':hint||`Drag to ${G.locker?'move between hold and locker':'rearrange'}${G.inPort?', or onto Set sail to sell':''}. Tap to inspect.`;
   return`<footer class="cta dock"><div class="inner">
@@ -323,7 +334,7 @@ function holdDock(extra,ups,lups,hint){
     <p class="hint${G.moving?' on':''}">${hint}</p>
     ${boardHTML(G.board,'p',ups)}
     ${G.locker?`<div class="stall-head locker-head"><h3>Locker <span class="soft">stays out of fights</span></h3><span class="soft">${used(G.locker)}/${LOCK}</span></div>${boardHTML(G.locker,'l',lups,LOCK)}`:''}
-    ${G.crew?`<button class="crewbar" id="crewbar" type="button" aria-label="Your crew"><span class="cb-l">Crew</span>${G.crew.map(c=>`<span class="cb-c" title="${CREW[c.k].n}">${crewFace(c.k)}</span>`).join('')}${Array.from({length:Math.max(0,berths()-G.crew.length)},()=>'<span class="cb-c empty"></span>').join('')}<span class="cb-cr">${[...crewCrafts()].map(craftIcon).join('')}</span></button>`:''}
+    ${G.crew?crewSlotsHTML():''}
     ${extra}</div></footer>`;
 }
 function fitDock(){const d=app.querySelector('.dock');if(d){app.style.paddingBottom=(d.offsetHeight+18)+'px';document.documentElement.style.setProperty('--dock',d.offsetHeight+'px')}}

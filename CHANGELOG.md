@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.0
+- Your crew now have berths under the hold, one slot per berth like the hold's tiles. Each shows the hand's face with a morale face (happy, fair, unhappy, mutinous), their role, what they master, their level and, on wider screens, their perk. Empty berths say to hire at a tavern.
+- A hand with an upgrade to spend is outlined in red with an Upgrade tag: tap them to pick the item. Tap anyone else to open the ship card.
+- The crew list is gone from the right-hand panel on big screens, since the berths sit under the hold.
+- The Captain role is dropped.
+
 ## 0.38.0
 - Every item now belongs to the crew (blades, pistols, bandages, charms) or to the ship (cannons, sails, planking), and is a weapon, haste, heal or shield. Some also carry an element: fire, venom or blessed. Item cards say which.
 - Ship cargo works on its own. Crew cargo needs a hand aboard who masters it, or it stays faded.
