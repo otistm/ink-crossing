@@ -6,12 +6,12 @@ let G=null,B=null,raf=0,last=0,bump=null,fresh=false;
    RULES FOR CHANGES: never rename or remove a field; give new fields a default in migrateAtlas / VOYAGE_DEFAULTS;
    if a field's meaning changes, bump the schema number and convert old data in the migrate function. */
 const ATLAS_SCHEMA=1,VOYAGE_SCHEMA=1;
-const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0,triage:0,qmDay:null,capGold:0,won:0};
+const VOYAGE_DEFAULTS={sv:VOYAGE_SCHEMA,charts:[],log:[],shops:{},creel:[],rod:0,tip:0,far:0,extra:0,full:false,freeRoll:true,quest:null,hock:null,locker:null,fightAt:null,boarded:null,unrolled:-1,fit:null,renown:0,perks:null,crew:null,orders:null,posted:0,triage:0,qmDay:null,capGold:0,won:0,lmGhost:null};
 function readKey(key){let raw=null;try{raw=localStorage.getItem(key)}catch(e){}if(!raw)return{raw:null,val:null};
   try{return{raw,val:JSON.parse(raw)}}catch(e){try{localStorage.setItem(key+'-unreadable',raw)}catch(_){}return{raw,val:null}}}
 function migrateAtlas(m){
-  const out=Object.assign({sv:ATLAS_SCHEMA,voyages:0,wins:0,bosses:0,elites:0,met:{},beat:{},items:{},charts:{},fish:{},people:{},tips:{},tipsOff:false,tutDone:false,best:0,daily:{}},m||{});
-  ['met','beat','items','charts','fish','people','tips','daily'].forEach(k=>{if(!out[k]||typeof out[k]!=='object')out[k]={}});
+  const out=Object.assign({sv:ATLAS_SCHEMA,voyages:0,wins:0,bosses:0,elites:0,met:{},beat:{},items:{},charts:{},fish:{},people:{},tips:{},tipsOff:false,tutDone:false,best:0,daily:{},captain:null,claims:{}},m||{});
+  ['met','beat','items','charts','fish','people','tips','daily','claims'].forEach(k=>{if(!out[k]||typeof out[k]!=='object')out[k]={}});
   ['voyages','wins','bosses','elites','best'].forEach(k=>{if(typeof out[k]!=='number'||!isFinite(out[k]))out[k]=0});
   // for the future: if(out.sv<2){ ...convert...; out.sv=2; }
   out.sv=ATLAS_SCHEMA;return out}
@@ -200,6 +200,7 @@ function updateReveal(){const row=node(G.at).row;G.reveal=G.full?99:row+2+G.extr
 // boss: its own numbers where the sea's boss should stand apart from the ordinary fights (the Deep's are a step below the Kraken)
 const SEASCALE=[{hp:.95,gear:.75,tier:0},{hp:1.15,gear:1.2,tier:3},{hp:1.18,gear:1.33,tier:3,boss:{hp:1.5,gear:1.6}}];
 function enemyOf(n){
+  if(n.type==='isle')return lmFoe(n);   // a landmark's guard (rewards.js)
   if(n.fixed){const list=n.fixed.list.map(x=>({...x}));list.enemy=true;return{e:ENEMIES[n.enemy],list,hp:n.fixed.hp,depth:depthOf(n)}}
   const e=ENEMIES[n.enemy],s0=SEASCALE[G.sea]||SEASCALE[2],sc=e.kind==='b'&&s0.boss?Object.assign({},s0,s0.boss):s0,depth=depthOf(n),r=RNG(G.seed,'foe',n.id),mult=e.kind==='e'?1.2:e.kind==='b'?1.3:1;
   let budget=(6+depth*6)*mult*sc.gear;const list=[];

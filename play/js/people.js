@@ -21,7 +21,7 @@ const NPCS={
     {l:'Sell him your route',d:'+8 gold.',f:()=>{G.gold+=8;return'Sold Quill a copy of my route. +8 gold.'}}]},
   tide:{n:'Brother Tide',role:'Sea priest',look:{body:'Shirt and Coat',head:'No Hair 2',face:'Solemn',beard:'Full 2'},sea:-1,x:"The sea keeps a ledger, captain. Shall we balance yours?",o:[
     {l:'Make an offering',d:'5 gold. Repair 3 hull.',need:()=>G.gold>=5,f:()=>{G.gold-=5;G.hull+=3;return'Brother Tide blessed the hull. +3 hull.'}},
-    {l:'Offer your best fish',d:'Draw a landmark.',need:hasFish,f:()=>{takeBestFish();return{chart:1,msg:'Gave Brother Tide my best fish. He showed me a mark for my chart.'}}},
+    {l:'Offer your best fish',d:'Mark your chart.',need:hasFish,f:()=>{takeBestFish();return{chart:1,msg:'Gave Brother Tide my best fish. He showed me a mark for my chart.'}}},
     {l:'Move on',d:'He keeps praying.',f:()=>'Passed Brother Tide at prayer.'}]},
   pip:{n:'Pip',role:'Stowaway',look:{body:'Sweater',head:'Medium Bangs 3',face:'Cute'},sea:-1,x:"Found them curled up in the sail locker. They say they can sew.",o:[
     {l:'Let Pip stay',d:'Pip mends a Spare Sail for you.',f:r=>addOrGold({k:'sail',t:rollTier(D()+2,r)},'Pip joined the crew and sewed')},
@@ -31,7 +31,7 @@ const NPCS={
     {l:'Buy a Treasure Chest',d:'14 gold.',need:()=>G.gold>=14,f:r=>{G.gold-=14;return addOrGold({k:'chest',t:rollTier(D(),r)},'Bought')}},
     {l:'Bow and leave',d:'She bows back.',f:()=>'Bowed to Madame Coral and left.'}]},
   ada:{n:'Ink Ada',role:'Tattooist',look:{body:'Gym Shirt',head:'Bun 2',face:'Driven'},sea:-1,x:"A mapmaker with bare arms? Let me draw something that lasts.",o:[
-    {l:'Get a tattoo',d:'8 gold. Draw a landmark.',need:()=>G.gold>=8,f:()=>{G.gold-=8;return{chart:1,msg:'Ink Ada tattooed a landmark on my arm.'}}},
+    {l:'Get a tattoo',d:'8 gold. Mark your chart.',need:()=>G.gold>=8,f:()=>{G.gold-=8;return{chart:1,msg:'Ink Ada tattooed a landmark on my arm.'}}},
     {l:'Just watch',d:'Nothing happens.',f:()=>'Watched Ink Ada work.'}]},
   cookie:{n:'Cookie',role:"Ship's cook",look:{body:'Polo and Sweater',head:'Bear',face:'Eating Happy',beard:'Moustache 9'},sea:-1,x:"Give me a fish and I'll give you a meal that fights back.",o:[
     {l:'Cook your best fish',d:'It becomes food cargo. Rarer fish, better tier.',need:hasFish,f:r=>{const f=takeBestFish();return addOrGold({k:pick(r,['pork','lime']),t:Math.min(3,FISH[f].rar+(G.sea>0?1:0))},`Cookie cooked the ${FISH[f].n} into`)}},
@@ -53,7 +53,7 @@ const NPCS={
     {l:'Take the letter',d:'Deliver it at your next port for a reward.',need:()=>!G.quest,f:()=>{G.quest='letter';return'Took a letter from Wet Jack to deliver at the next port.'}},
     {l:'Refuse',d:'He sinks back down.',f:()=>"Couldn't take a dead man's letter."}]},
   third:{n:'The Third Cartographer',role:'Alive, somehow',look:{body:'Paper',head:'Medium Bangs',face:'Tired'},sea:2,lore:1,x:"The Queen took my ship, not me. I've been rowing toward the Kraken for a year. You'll get there first. Draw it well.",o:[
-    {l:'Take her notes',d:'Draw a landmark.',f:()=>{lore('The third cartographer is alive, rowing toward the Kraken in a dinghy. She gave me her notes.');return{chart:1,msg:'The third cartographer gave me her notes on the Deep.'}}},
+    {l:'Take her notes',d:'Mark your chart.',f:()=>{lore('The third cartographer is alive, rowing toward the Kraken in a dinghy. She gave me her notes.');return{chart:1,msg:'The third cartographer gave me her notes on the Deep.'}}},
     {l:'Give her a fish',d:'Your best fish, for her harpoon.',need:hasFish,f:r=>{takeBestFish();lore('The third cartographer is alive. I fed her, and she gave me her harpoon.');return addOrGold({k:'harpoon',t:rollTier(D()+4,r)},'The third cartographer traded me')}}]}
 };
 function unlockLocker(){G.hock='done';G.locker=[];lore('Hock built a locker below the waterline. Six slots for spare cargo. It smells of fresh pine and fish.')}

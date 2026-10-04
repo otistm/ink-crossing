@@ -1675,3 +1675,6 @@ body.hovtalk #app.talkon .barroom.sided .patron:not(.sel) .bust{filter:url(#tfad
 .desk-cap .rn-bar{display:block}
 @media (min-width:1180px) and (min-height:640px){#desk .desk-ship .desk-trait b{display:inline;font:inherit;font-weight:800;margin:0}}
 .goldpick .pi .w{fill:var(--mustard)}
+/* signing the chart: the captain's name */
+.nameinput{display:block;width:100%;font:italic 900 22px var(--display);color:var(--ink);background:var(--paper);border:2.5px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0 6px;box-shadow:3px 3px 0 var(--ink)}
+.nameinput:focus{outline:none;box-shadow:3px 3px 0 var(--mustard)}

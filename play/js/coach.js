@@ -2,7 +2,7 @@
 "use strict";
 /* The maiden voyage: the Guild's trial run, six stops that each teach one part of the game by playing it.
    Gullhaven: ship cargo, then crew cargo and the hand who wields it. The training hulk: a fight, then renown and a captain's pick.
-   The uncharted isle: a landmark. Saltmere: a fitting at the shipwright. The examiner: everything working together.
+   The uncharted isle: a landmark challenge. Saltmere: a fitting at the shipwright. The examiner: everything working together.
    The Guild hall: done.
    Steps. when: the event that shows the step (none = right after the previous one).
    until: the event that moves on ('next' shows a Next button, 'finish' a Finish button). pause: holds the fight while it's shown. */
@@ -25,7 +25,7 @@ const TUT=[
   {when:'spoils',until:'spoilsTaken',target:'.offers',text:"Take one piece of their cargo, then Sail on."},
   // the isle: landmarks
   {when:'chart',until:'sail',target:'.node.reach',text:"Sail to the uncharted isle."},
-  {when:'landmarkOpen',until:'landmark',text:"Landmarks help for the whole voyage. Pick one."},
+  {when:'landmarkOpen',until:'fight',text:"A landmark! Beat its keeper to claim it and win a prize."},
   {when:'chart',until:'sail',target:'.node.reach',text:"Sail on to Saltmere."},
   // Saltmere: upgrades, selling, fittings
   {when:'port',until:'bought',target:'.stallsec',text:"Open the Armory and buy the Rapier. A matching item upgrades yours."},
@@ -36,7 +36,7 @@ const TUT=[
   {until:'chart',target:'#leave',text:"One test left. Set sail."},
   // the examiner: everything together
   {when:'chart',until:'fight',target:'.node.reach',text:"Sail at the Guild's examiner."},
-  {when:'fight',until:'next',pause:1,target:'#pf',pos:'bottom',text:"Cargo, crew, fitting and landmark all work together now."},
+  {when:'fight',until:'next',pause:1,target:'#pf',pos:'bottom',text:"Cargo, crew, fitting and captain's pick all work together now."},
   {when:'spoils',until:'spoilsTaken',target:'.offers',text:"Take your spoils, then Sail on."},
   {when:'chart',until:'sail',target:'.node.reach',text:"Sail in to the Guild hall."},
   {when:'port',until:'finish',text:"Trial passed! Out there, crew take wages each port and shipwrights mend your hull."}
@@ -47,7 +47,7 @@ function startTutorial(){
   const map={sea:0,start:900,boss:null,rows:5,nodes:[
     {id:900,row:0,col:1.5,x:170,type:'port',name:'Gullhaven',open:['market','tavern']},
     {id:901,row:1,col:1.5,x:170,type:'threat',enemy:'gulls',fixed:{hp:60,list:[{k:'pins',t:0}]}},
-    {id:902,row:2,col:1.5,x:170,type:'isle'},
+    {id:902,row:2,col:1.5,x:170,type:'isle',fixed:{hp:45,list:[{k:'pins',t:0}]}},
     {id:903,row:3,col:1.5,x:170,type:'port',name:'Saltmere',open:['market','wright']},
     {id:904,row:4,col:1.5,x:170,type:'threat',enemy:'sharks',fixed:{hp:110,list:[{k:'dagger',t:0},{k:'fenders',t:0},{k:'pins',t:0}]}},
     {id:905,row:5,col:1.5,x:170,type:'port',name:'The Guild hall',open:['market']}],

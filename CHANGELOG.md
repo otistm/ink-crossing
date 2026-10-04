@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.42.0
+- Uncharted isles are now landmark challenges. Each isle is one of 15 named landmarks (5 per sea, the same in every voyage), guarded by the ghost of the last captain to claim it: their hold, ship and health. Unclaimed landmarks, or any landmark when you're offline, are guarded by a keeper.
+- Win and you carve your name on it: the game asks your captain's name once, the first time, and keeps it. Other captains then meet your ghost there. Your prize: raise one item a tier, or take a piece of cargo from another ship's pool.
+- Landmarks no longer hand out passive chart bonuses. Elites now give spoils only. People and events that used to say "Draw a landmark" now say "Mark your chart" and still give a chart mark.
+- Online ghosts need the Supabase keys in config.js and the new supabase/02-landmarks.sql run once. Until then, every landmark has a keeper and your name is kept on your own device.
+
 ## 0.41.1
 - Fittings evened out. Second Wind now saves you on a quarter of your health (was half). The Sea Idol halves burn and poison put on you (it used to block them). Boarding Planks hold the enemy's item for 8s (was 5s). The Siren also slows the enemy's first item for 4s.
 

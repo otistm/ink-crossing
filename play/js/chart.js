@@ -126,7 +126,7 @@ function nodeInfo(n,hover){
   let body='',head=nodeTitle(n);head=head[0].toUpperCase()+head.slice(1);
   if(n.type==='port')body=`<p>A port market, a tavern and a shipwright. Buy and sell cargo, hire crew and repair your hull.</p>`;
   if(n.type==='event')body=`<p>Something is out there. It could help or hurt.</p>`;
-  if(n.type==='isle')body=`<p>Land no map shows. Draw a new landmark on your chart.</p>`;
+  if(n.type==='isle')body=`<p>${cap(lmName(lmKey(n)))}. A landmark guarded by the ghost of the last captain to claim it, or by its keeper. Win to carve your name on it and take a prize.</p>`;
   if(n.type==='npc'){const N=NPCS[n.npc];body=`<div class="npc">${portrait(N.look)}<div><p><b>${N.role}.</b> Someone to talk to. They may trade, help, or ask for something.</p></div></div>`}
   if(n.type==='fish')body=`<p>The water boils with fish. ${3+G.tip} casts. Sell what you catch at port.</p>`;
   if(n.type==='port'&&n.visitor)body+=`<p class="soft">Someone is waiting on the dock.</p>`;
@@ -171,7 +171,7 @@ function goNow(id){
   if(n.type==='port')port(id);
   else if(n.enemy)fight(n);
   else if(n.type==='event')eventAt(n);
-  else if(n.type==='isle'){chart();chartPick(RNG(G.seed,'isle',n.id),'Found an uncharted isle.',chart)}
+  else if(n.type==='isle')landmarkAt(n);
   else if(n.type==='npc'){chart();talk(n.npc,n.id,chart)}
   else if(n.type==='fish'){const c=3+G.tip;G.tip=0;fishing(n.id,c,chart)}
 }

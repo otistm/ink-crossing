@@ -19,7 +19,7 @@ function chartPick(r,lead,done,fk){
   if(fk&&(hasF(fk)||!FITTINGS[fk]))fk=null;
   if(!opts.length&&!fk){toast('Every landmark is already on your chart.');return done()}
   const f=fk&&FITTINGS[fk],old=f&&fitIn(f.spot);
-  const ov=overlay(`<h2>${fk?'Take your pick':'Draw a landmark'}</h2><p class="soft">${lead} ${fk?'Pick a landmark for your chart, or a fitting for your ship. Either lasts the whole voyage.':'Pick one to add to your chart. It lasts the whole voyage.'}</p><div class="picks">${opts.map(k=>`<button class="pick" data-k="${k}"><span class="pi plain">${glyph(k)}</span><div><b>${CHARTS[k].n}</b><span class="d">${CHARTS[k].d}</span></div></button>`).join('')}${fk?`<button class="pick fitpick" data-fk="${fk}" ${canEquip(fk)?'':'disabled'}><span class="pi plain">${fitGlyph(fk)}</span><div><b>${f.n} <span class="soft">${SPOTS[f.spot].toLowerCase()} fitting</span></b><span class="d">${fitDesc(fk)}${old?` Replaces your ${FITTINGS[old].n}, which sells for ${Math.floor(FITTINGS[old].p/2)}.`:''}${canEquip(fk)?'':' Needs a free hold slot.'}</span></div></button>`:''}</div>`,true);
+  const ov=overlay(`<h2>${fk?'Take your pick':'Mark your chart'}</h2><p class="soft">${lead} ${fk?'Pick a mark for your chart, or a fitting for your ship. Either lasts the whole voyage.':'Pick a mark to add to your chart. It helps for the whole voyage.'}</p><div class="picks">${opts.map(k=>`<button class="pick" data-k="${k}"><span class="pi plain">${glyph(k)}</span><div><b>${CHARTS[k].n}</b><span class="d">${CHARTS[k].d}</span></div></button>`).join('')}${fk?`<button class="pick fitpick" data-fk="${fk}" ${canEquip(fk)?'':'disabled'}><span class="pi plain">${fitGlyph(fk)}</span><div><b>${f.n} <span class="soft">${SPOTS[f.spot].toLowerCase()} fitting</span></b><span class="d">${fitDesc(fk)}${old?` Replaces your ${FITTINGS[old].n}, which sells for ${Math.floor(FITTINGS[old].p/2)}.`:''}${canEquip(fk)?'':' Needs a free hold slot.'}</span></div></button>`:''}</div>`,true);
   const fb=ov.querySelector('[data-fk]');if(fb)fb.onclick=()=>{if(fb.disabled)return;ov.remove();const back=equip(fk);toast(`Fitted ${f.n}${back?`. Sold the old one for ${back} gold`:''}`);save();coach('landmark');done()};
   ov.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k;ov.remove();
     G.charts.push({k,sea:G.sea,at:G.at});A.charts[k]=1;saveA();
@@ -29,6 +29,68 @@ function chartPick(r,lead,done,fk){
     logL(msg);toast(msg);save();coach('landmark');done()});
   ov.querySelector('.pick').focus();coach('landmarkOpen');
 }
+/* ---------- landmark challenges ----------
+   An uncharted isle holds a landmark (LANDMARKS, picked by voyage and stop). It's guarded by the ghost of the last captain to
+   claim it: their hold, ship and health, fetched online (lmFetch) and kept in G.lmGhost so a refresh replays the same fight. With
+   no claim, or offline, its keeper guards it: an elite of this sea. Win and you carve your name on it (claimLandmark: asked once,
+   kept in A.captain; your ghost is posted with lmPost and noted in A.claims), then take a prize (lmReward). */
+const lmKey=n=>{const L=LANDMARKS[Math.min(G.sea,2)],ks=Object.keys(L);return ks[ri(RNG(G.seed,'landmark',n.id),ks.length)]};
+const lmName=k=>{for(const L of LANDMARKS)if(L[k])return L[k];return'the landmark'};
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+const cleanName=s=>String(s||'').replace(/[^\p{L}\p{N} '.-]/gu,'').replace(/\s+/g,' ').trim().slice(0,20);
+/* a ghost from the table is someone else's data: keep only cargo that exists, tiers 0 to 3, what fits a hold, and sane health */
+function cleanGhost(g,captain,ship){if(!g||!Array.isArray(g.hold))return null;const hold=[];
+  g.hold.forEach(x=>{if(!x||!DEFS[x.k]||isCrewKey(x.k))return;const t=Math.max(0,Math.min(3,x.t|0));if(used(hold)+DEFS[x.k].s<=HOLD)hold.push({k:x.k,t})});
+  if(!hold.length)return null;const hp=Math.max(60,Math.min(600,+g.hp||0))||100;
+  return{captain:cleanName(captain||g.captain)||'a nameless captain',ship:SHIPS[ship||g.ship]?(ship||g.ship):'sloop',hold,hp}}
+/* who guards this landmark, worked out once per voyage stop */
+async function lmGuard(n){G.lmGhost=G.lmGhost||{};if(G.lmGhost[n.id])return G.lmGhost[n.id];const key=lmKey(n);let g=null;
+  if(!G.tut){const row=await lmFetch(key);
+    if(row){const gh=cleanGhost(row.ghost,row.captain,row.ship);if(gh)g=row.player_id===NET.uid?{mine:1,captain:gh.captain}:{ghost:gh}}
+    else if(A.claims[key])g={mine:1,captain:A.claims[key].captain}}
+  return G.lmGhost[n.id]=g||{keeper:1}}
+/* the fight's enemy: the ghost's hold, or the keeper (the trial's isle has a fixed, gentle one) */
+function lmFoe(n){const g=(G.lmGhost||{})[n.id]||{keeper:1},name=lmName(lmKey(n)),depth=depthOf(n);
+  if(g.ghost){const list=g.ghost.hold.map(x=>({...x}));list.enemy=true;return{e:{n:`ghost of ${g.ghost.captain}`,traits:[],kind:'e'},list,hp:Math.min(g.ghost.hp,Math.round(shipHP(depth)*1.3)),depth}}
+  if(n.fixed){const list=n.fixed.list.map(x=>({...x}));list.enemy=true;return{e:{n:`keeper of ${name}`,traits:[],kind:'e'},list,hp:n.fixed.hp,depth}}
+  const ks=Object.keys(ENEMIES).filter(k=>ENEMIES[k].kind==='e'&&ENEMIES[k].sea===Math.min(G.sea,2)),ek=ks[ri(RNG(G.seed,'keeper',n.id),ks.length)];
+  const f=enemyOf(Object.assign({},n,{type:'elite',enemy:ek}));f.e=Object.assign({},f.e,{n:`keeper of ${name}`,kind:'e'});return f}
+/* landing on the isle: who holds it, and the choice to challenge */
+async function landmarkAt(n){chart();const key=lmKey(n),name=lmName(key);
+  const ov=overlay(`<h2>${cap(name)}</h2><p class="soft">Reading the names carved in the stone…</p>`,true);
+  const g=await lmGuard(n);if(!ov.isConnected)return;const sh=ov.querySelector('.sheet');
+  if(g.mine){sh.innerHTML=`<h2>${cap(name)}</h2><p>Your name is carved here, ${g.captain}. Nobody has taken it from you yet.</p><button class="primary" data-a="leave">Sail on</button>`;
+    sh.querySelector('[data-a]').onclick=()=>{ov.remove();chart()};coach('landmarkOpen');return}
+  const who=g.ghost?`<p>The last name carved here is <b>${g.ghost.captain}</b>, captain of ${SHIPS[g.ghost.ship].n}. Their ghost guards it with the hold they won it with.</p>`
+    :`<p>No captain's name is carved here yet. Its keeper guards it.</p>`;
+  sh.innerHTML=`<h2>${cap(name)}</h2>${who}<p class="soft">Win to carve your name on ${name}, so other captains meet your ghost here, and take a prize.</p>
+    <div class="sh-actions"><button class="ghost" data-a="leave">Sail on</button><button class="primary" data-a="go">Challenge</button></div>`;
+  sh.querySelector('[data-a=go]').onclick=()=>{ov.remove();save();fight(n)};
+  sh.querySelector('[data-a=leave]').onclick=()=>{ov.remove();logL(`Passed ${name} by.`);save();chart()};
+  sh.querySelector('[data-a=go]').focus();coach('landmarkOpen')}
+/* the first landmark you win asks your captain's name, once; it's kept in your Atlas */
+function askName(done){if(A.captain)return done();
+  const ov=overlay(`<h2>Sign the chart</h2><p>The winner carves a name on the landmark, and other captains will meet your ghost here. What do they call you?</p>
+    <input class="nameinput" id="capname" maxlength="20" autocomplete="off" placeholder="Captain Mira"><p class="soft">Letters, numbers and spaces, up to 20. You only choose once.</p>
+    <button class="primary" data-a="sign">Carve it</button>`,true);
+  const inp=ov.querySelector('#capname');setTimeout(()=>inp.focus(),120);
+  const go=()=>{A.captain=cleanName(inp.value)||'A nameless captain';saveA();ov.remove();done()};
+  ov.querySelector('[data-a=sign]').onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()}}
+function claimLandmark(n,done){const key=lmKey(n),name=lmName(key);if(G.tut){logL(`Won ${name}.`);return done()}
+  askName(()=>{const ghost={captain:A.captain,ship:G.ship,hold:G.board.map(b=>({k:b.k,t:b.t})),hp:shipHP(depthOf(n))};
+    A.claims[key]={captain:A.captain,ship:G.ship,sea:G.sea,at:Date.now()};saveA();G.lmGhost=G.lmGhost||{};G.lmGhost[n.id]={mine:1,captain:A.captain};
+    logL(`Carved "${A.captain}" on ${name}.`);save();toast(`Your name is on ${name}`);lmPost(key,ghost);done()})}
+/* the landmark's prize: raise one item a tier, or take a piece of another ship's cargo */
+function lmReward(n,done){const r=RNG(G.seed,'lmprize',n.id),depth=depthOf(n),mine=G.board.concat(G.locker||[]).filter(it=>it.t<3);
+  const others=SHIPKEYS.filter(k=>k!==G.ship),offers=[];for(let i=0;i<3;i++){const sh=others[i%others.length],pool=poolFor(sh);offers.push({k:pool[ri(r,pool.length)],t:Math.min(3,rollTier(depth+3,r))})}
+  const ov=overlay(`<h2>The prize of ${lmName(lmKey(n))}</h2><p class="soft">Raise one of your items a tier, or take a piece of another ship's cargo.</p>
+    <div class="picks">${mine.length?`<button class="pick" data-p="up"><span class="pi plain">${CHEV}</span><div><b>Upgrade an item</b><span class="d">Pick any item in your hold or locker below Diamond.</span></div></button>`:''}
+    ${offers.map((o,i)=>`<button class="pick" data-p="${i}"><span class="pi o-icon t${o.t} c-${kindOf(o.k)}">${icon(o.k)}</span><div><b>${DEFS[o.k].n} <span class="soft">${TIER[o.t]}, from ${SHIPS[DEFS[o.k].ship].n}</span></b><span class="d">${describe([o],0,null).L.join(' ')}</span></div></button>`).join('')}</div>`,true);
+  const fin=msg=>{logL(msg);toast(msg);save();coach('landmark');done()};
+  ov.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ov.remove();const p=b.dataset.p;
+    if(p!=='up')return fin(addOrGold(offers[+p],'Took'));
+    const o2=overlay(`<h2>Upgrade an item</h2><div class="picks">${mine.map((it,i)=>`<button class="pick" data-u="${i}"><span class="pi o-icon t${it.t} c-${kindOf(it.k)}">${icon(it.k)}</span><div><b>${DEFS[it.k].n}</b><span class="d">${TIER[it.t]} → <b>${TIER[it.t+1]}</b></span></div></button>`).join('')}</div>`,true);
+    o2.querySelectorAll('[data-u]').forEach(x=>x.onclick=()=>{const it=mine[+x.dataset.u];it.t++;flash={ref:it,kind:'up'};o2.remove();fin(`Raised the ${DEFS[it.k].n} to ${TIER[it.t]}.`)})})}
 /* why a spoil doesn't fit yet, and how many slots selling would need to free */
 function roomNote(o){const sz=DEFS[o.k].s,need=Math.min(sz-(holdCap()-used(G.board)),G.locker?sz-(LOCK-used(G.locker)):99);
   return`Size ${sz}. Free ${need} more slot${need===1?'':'s'}${G.locker?' in your hold or locker':''} to take it.`}

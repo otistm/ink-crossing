@@ -76,6 +76,12 @@ const CHARTS={
 };
 const glyph=(k,cls)=>`<svg viewBox="0 0 30 30" class="${cls||'gl'}" aria-hidden="true">${CHARTS[k].g}</svg>`;
 
+/* ---------- landmarks: named places on the uncharted isles, the same in every voyage, five per sea. Each is guarded by the
+   ghost of the last captain to claim it (online), or by its keeper. Beat them to carve your name on it (rewards.js). ---------- */
+const LANDMARKS=[
+  {gullrock:'Gull Rock',bell:'the Drowned Bell',kestrel:'Kestrel Point',whistle:'Saltwhistle Spit',cairns:'the Twin Cairns'},
+  {lantern:'Lantern Reef',needle:"Widow's Needle",stair:'the Grey Stair',hollow:'Hollow Isle',mourning:'the Mourning Buoy'},
+  {rib:"the Leviathan's Rib",atoll:'Black Pearl Atoll',lastlight:'the Last Light',tooth:"Siren's Tooth",gate:'the Abyss Gate'}];
 /* ---------- fittings: rare parts of the ship that each change one rule of the game, with no trade-off. One per spot. Only the
    shipwrights at a sea's later ports build them, and only for a captain with WRIGHTWINS wins (wrightBuilds() in port.js).
    Effects are read by name where they apply: fOn(key) in battle.js, hasF(key) elsewhere. d is the text. ---------- */
@@ -177,7 +183,7 @@ const EVENTS={
     {l:'Ride the edge',d:'+15 gold, lose 3 hull.',f:()=>{G.gold+=15;G.hull-=3;return"Rode a whirlpool's edge. Found 15 gold in the churn, lost 3 hull."}},
     {l:'Go around',d:'Nothing happens.',f:()=>'Sailed around a whirlpool.'}]},
   cache:{t:"Cartographer's cache",x:"A tin box under a cairn, stamped with the first cartographer's mark: a circle with a line through it.",o:[
-    {l:'Take her notes',d:'Draw a landmark on your chart.',f:()=>({chart:1,msg:"Found the first cartographer's notes."})},
+    {l:'Take her notes',d:'Mark your chart.',f:()=>({chart:1,msg:"Found the first cartographer's notes."})},
     {l:'Take her coins',d:'+12 gold.',f:()=>{G.gold+=12;return"Took the first cartographer's coins."}}]},
   storm:{t:'Storm front',x:'Black clouds, and no way around them.',o:[
     {l:'Ride it out',d:'Lose 3 hull.',f:()=>{G.hull-=3;return'Rode out a storm front. Lost 3 hull.'}},

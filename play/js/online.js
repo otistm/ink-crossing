@@ -38,4 +38,11 @@ function showFeedback(){
     if(ok){ov.querySelector('.sheet').innerHTML=`<h2>Thank you</h2><p>Your note is on its way.</p><button class="primary" data-a="ok">Back</button>`;ov.querySelector('[data-a=ok]').onclick=()=>ov.remove()}
     else{btn.disabled=false;msg.textContent=`Couldn't send (${why}). Your note is still here, so you can try again or copy it.`}};
 }
+/* ---------- landmarks: the last captain to claim each one (their ghost), and posting your own claim ---------- */
+const slow=ms=>new Promise(r=>setTimeout(()=>r({data:null,error:'slow'}),ms));
+async function lmFetch(key){await NET.ready;if(!NET.sb)return null;
+  try{const{data,error}=await Promise.race([NET.sb.from('crossing_landmarks').select('player_id,captain,ship,ghost').eq('landmark',key).order('created_at',{ascending:false}).limit(1),slow(4000)]);
+    return error||!data||!data[0]?null:data[0]}catch(e){return null}}
+async function lmPost(key,ghost){await NET.ready;if(!NET.sb||!NET.uid)return false;
+  try{const{error}=await NET.sb.from('crossing_landmarks').insert({player_id:NET.uid,landmark:key,captain:ghost.captain,ship:ghost.ship,sea:G.sea+1,ghost,version:VERSION});return!error}catch(e){return false}}
 initOnline();

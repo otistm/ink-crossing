@@ -19,7 +19,7 @@ function setupFight(n,f,board){
   const pMax=shipHP(depth),on=new Set(Object.keys(FITTINGS).filter(hasF));
   // the Siren turns the enemy around: their hold is reversed, so what sat next to what no longer does
   const elist=on.has('siren')?Object.assign(f.list.slice().reverse(),{enemy:true}):f.list;
-  B={fon:on,dot:{p:{burn:0,poison:0,storm:0},e:{burn:0,poison:0,storm:0}},t:0,wait:.9,speed:window._spd||1,over:false,quiet:false,bt:0,pt:0,st:0,storm:0,node:n,bell:BELL+(hasC('calm')?6:0),cr:craftRanks(),orders:ordersAboard(),
+  B={fon:on,foe:f.e,dot:{p:{burn:0,poison:0,storm:0},e:{burn:0,poison:0,storm:0}},t:0,wait:.9,speed:window._spd||1,over:false,quiet:false,bt:0,pt:0,st:0,storm:0,node:n,bell:BELL+(hasC('calm')?6:0),cr:craftRanks(),orders:ordersAboard(),
      P:mkSide(sh.n,pMax,board.map(x=>({...x})),[sh.trait],G.sea,crewCrafts()),E:mkSide('The '+f.e.n,f.hp,elist,f.e.traits,G.sea)};
   const P=B.P,E=B.E;
   for(const S of [P,E])S.items.forEach(it=>{if(it.s.cd)it.c=it.s.cd*it.s.pre});
@@ -47,10 +47,10 @@ function setupFight(n,f,board){
 function fight(n){
   app.style.paddingBottom='';
   const f=enemyOf(n);
-  A.met[n.enemy]=1;saveA();G.fightAt=n.id;save();
+  if(n.enemy){A.met[n.enemy]=1;saveA()}G.fightAt=n.id;save();
   setupFight(n,f,G.board);const P=B.P,E=B.E;
   app.innerHTML=`${barHTML()}<section class="battle">
-    ${fighterHTML(E,'e','k-'+(n.type==='boss'||n.type==='elite'?n.type:'threat'))}${boardHTML(E.list,'e')}
+    ${fighterHTML(E,'e','k-'+(n.type==='boss'||n.type==='elite'?n.type:n.type==='isle'?'elite':'threat'))}${boardHTML(E.list,'e')}
     <div class="mid"><span class="clock" id="clock"></span><div class="speed">${[1,2,4].map(v=>`<button data-sp="${v}" aria-pressed="${B.speed===v}">${v}×</button>`).join('')}<button id="skip">Skip</button></div></div>
     ${boardHTML(P.list,'p',null,holdCap())}${fighterHTML(P,'p','ship-'+(SHIPDRAW[G.ship]?G.ship:'sloop'))}
     <p class="tip">Tap any item to see what it does.</p></section>`;
@@ -207,16 +207,17 @@ function chips(S){
 }
 function end(win){
   B.over=true;cancelAnimationFrame(raf);
-  const n=B.node,e=ENEMIES[n.enemy],k=e.kind,depth=depthOf(n),foe=e.n;
+  const n=B.node,e=n.type==='isle'?B.foe:ENEMIES[n.enemy],k=e.kind,depth=depthOf(n),foe=e.n;
   B.quiet=false;squish((win?B.E:B.P).fel,'ko');G.fightAt=null;
   let head,lines=[],btn,next;
   if(win){
-    A.beat[n.enemy]=1;G.won=(G.won||0)+1;if(k==='e')A.elites++;if(k==='b')A.bosses++;saveA();
+    if(n.enemy)A.beat[n.enemy]=1;G.won=(G.won||0)+1;if(k==='e')A.elites++;if(k==='b')A.bosses++;saveA();
     const gold=(k==='b'?15+G.sea*10:k==='e'?10+depth:5+Math.floor(depth/2))+B.P.gold+(hasC('trade')?3:0);
     G.gold+=gold;bump='gold';logL(`Beat the ${foe}. +${gold} gold.`);
     head=`You beat the ${foe}.`;lines.push(`+${gold} gold.`);
-    if(k==='t'){btn='Take the spoils';next=()=>lootPick(n,chart)}
-    else if(k==='e'){btn='Take the spoils';next=()=>lootPick(n,()=>chartPick(RNG(G.seed,'elite',n.id),`The ${foe} was carrying a chart and spare parts.`,chart))}
+    if(n.type==='isle'){btn='Carve your name';next=()=>claimLandmark(n,()=>lmReward(n,chart))}
+    else if(k==='t'){btn='Take the spoils';next=()=>lootPick(n,chart)}
+    else if(k==='e'){btn='Take the spoils';next=()=>lootPick(n,chart)}
     else if(G.sea<2){lines.push(`The way into ${SEAS[G.sea+1]} is open.`);btn=`Sail into ${SEAS[G.sea+1]}`;next=nextSea}
     else{btn='Sight land';next=()=>ending(true)}
   }else{
