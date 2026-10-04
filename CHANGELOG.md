@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.42.1
+- Captain names are filtered. A name with a slur or swearing in it (spaced out, stretched or spelt with numbers too) gets "The Guild won't carve that on a chart. Pick another name." Real names that happen to contain a rude word, like Hancock, Dickens or Sussex, still pass. A rude name that reaches the table some other way shows as "a nameless captain".
+
 ## 0.42.0
 - Uncharted isles are now landmark challenges. Each isle is one of 15 named landmarks (5 per sea, the same in every voyage), guarded by the ghost of the last captain to claim it: their hold, ship and health. Unclaimed landmarks, or any landmark when you're offline, are guarded by a keeper.
 - Win and you carve your name on it: the game asks your captain's name once, the first time, and keeps it. Other captains then meet your ghost there. Your prize: raise one item a tier, or take a piece of cargo from another ship's pool.

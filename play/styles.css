@@ -1678,3 +1678,4 @@ body.hovtalk #app.talkon .barroom.sided .patron:not(.sel) .bust{filter:url(#tfad
 /* signing the chart: the captain's name */
 .nameinput{display:block;width:100%;font:italic 900 22px var(--display);color:var(--ink);background:var(--paper);border:2.5px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0 6px;box-shadow:3px 3px 0 var(--ink)}
 .nameinput:focus{outline:none;box-shadow:3px 3px 0 var(--mustard)}
+#capmsg.bad{color:var(--brick);font-weight:800}

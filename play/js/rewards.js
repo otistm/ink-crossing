@@ -38,11 +38,20 @@ const lmKey=n=>{const L=LANDMARKS[Math.min(G.sea,2)],ks=Object.keys(L);return ks
 const lmName=k=>{for(const L of LANDMARKS)if(L[k])return L[k];return'the landmark'};
 const cap=s=>s[0].toUpperCase()+s.slice(1);
 const cleanName=s=>String(s||'').replace(/[^\p{L}\p{N} '.-]/gu,'').replace(/\s+/g,' ').trim().slice(0,20);
+/* a simple name filter: no slurs or swearing on the chart. Letters are folded (0→o, 1→i, 3→e, 4→a, 5→s, 7→t, repeats squashed)
+   so spaced-out or number-swapped spellings are caught. ROOTS match anywhere in the name; WORDS only as a whole word, so real
+   names like Hancock or Dickens stay allowed. */
+const NAME_ROOTS=['fuck','shit','cunt','bitch','nigg','niga','fag','rape','nazi','hitler','whore','slut','penis','vagin','porn','twat','wank','retard','kike','spic','chink','trany','tranny','dildo','jizz','cum','molest','pedo'];
+const NAME_WORDS=['ass','arse','dick','cock','tit','tits','sex','homo','piss','bastard','prick','knob','balls','boob','boobs','fanny','kkk'];
+function rudeName(name){const fold=t=>t.toLowerCase().replace(/[0134578@$!|]/g,c=>({0:'o',1:'i',3:'e',4:'a',5:'s',7:'t',8:'b','@':'a','$':'s','!':'i','|':'i'}[c])).replace(/(.)\1+/g,'$1');
+  const joined=fold(name).replace(/[^a-z]/g,''),words=fold(name).split(/[^a-z]+/).filter(Boolean);
+  const W=NAME_WORDS.map(fold);return NAME_ROOTS.some(r=>joined.includes(fold(r)))||words.some(w=>W.includes(w)||W.includes(w.replace(/s$/,'')))}
 /* a ghost from the table is someone else's data: keep only cargo that exists, tiers 0 to 3, what fits a hold, and sane health */
 function cleanGhost(g,captain,ship){if(!g||!Array.isArray(g.hold))return null;const hold=[];
   g.hold.forEach(x=>{if(!x||!DEFS[x.k]||isCrewKey(x.k))return;const t=Math.max(0,Math.min(3,x.t|0));if(used(hold)+DEFS[x.k].s<=HOLD)hold.push({k:x.k,t})});
   if(!hold.length)return null;const hp=Math.max(60,Math.min(600,+g.hp||0))||100;
-  return{captain:cleanName(captain||g.captain)||'a nameless captain',ship:SHIPS[ship||g.ship]?(ship||g.ship):'sloop',hold,hp}}
+  const nm=cleanName(captain||g.captain);
+  return{captain:nm&&!rudeName(nm)?nm:'a nameless captain',ship:SHIPS[ship||g.ship]?(ship||g.ship):'sloop',hold,hp}}
 /* who guards this landmark, worked out once per voyage stop */
 async function lmGuard(n){G.lmGhost=G.lmGhost||{};if(G.lmGhost[n.id])return G.lmGhost[n.id];const key=lmKey(n);let g=null;
   if(!G.tut){const row=await lmFetch(key);
@@ -71,10 +80,12 @@ async function landmarkAt(n){chart();const key=lmKey(n),name=lmName(key);
 /* the first landmark you win asks your captain's name, once; it's kept in your Atlas */
 function askName(done){if(A.captain)return done();
   const ov=overlay(`<h2>Sign the chart</h2><p>The winner carves a name on the landmark, and other captains will meet your ghost here. What do they call you?</p>
-    <input class="nameinput" id="capname" maxlength="20" autocomplete="off" placeholder="Captain Mira"><p class="soft">Letters, numbers and spaces, up to 20. You only choose once.</p>
+    <input class="nameinput" id="capname" maxlength="20" autocomplete="off" placeholder="Captain Mira"><p class="soft" id="capmsg">Letters, numbers and spaces, up to 20. You only choose once.</p>
     <button class="primary" data-a="sign">Carve it</button>`,true);
   const inp=ov.querySelector('#capname');setTimeout(()=>inp.focus(),120);
-  const go=()=>{A.captain=cleanName(inp.value)||'A nameless captain';saveA();ov.remove();done()};
+  const go=()=>{const nm=cleanName(inp.value);
+    if(nm&&rudeName(nm)){const m=ov.querySelector('#capmsg');m.textContent='The Guild won\'t carve that on a chart. Pick another name.';m.classList.add('bad');squish(inp,'hit');inp.focus();return}
+    A.captain=nm||'A nameless captain';saveA();ov.remove();done()};
   ov.querySelector('[data-a=sign]').onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()}}
 function claimLandmark(n,done){const key=lmKey(n),name=lmName(key);if(G.tut){logL(`Won ${name}.`);return done()}
   askName(()=>{const ghost={captain:A.captain,ship:G.ship,hold:G.board.map(b=>({k:b.k,t:b.t})),hp:shipHP(depthOf(n))};
